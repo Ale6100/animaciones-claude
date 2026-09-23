@@ -2,7 +2,7 @@
 
 Read this whole file before you draw anything. It covers how to make a short, hand-painted cartoon, starring Clawd or any character you design: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
 
-The person prompting you decides **what** the video is about. This guide decides **how** it's made. If they ask for something the rules below forbid (a caption, a 3D spin), do what they ask, but only for that thing.
+The person prompting you decides **what** the video is about. This guide decides **how** it's made. If they ask for something the rules below forbid (a caption, a 3D spin), do what they ask.
 
 **No design here is final.** Clawd, the emotions, the props and the helpers are a starting point, not a limit. Change any of them, Clawd's own design included, and add whatever new characters, props or emotions the idea needs. Paint new things with the same tools and rules, so they belong with the rest.
 
