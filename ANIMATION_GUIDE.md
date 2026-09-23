@@ -1,6 +1,6 @@
 # Animating Clawd
 
-Read this whole file before you draw anything. It covers how to make a short, hand-painted cartoon starring Clawd: the rules that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
+Read this whole file before you draw anything. It covers how to make a short, hand-painted cartoon starring Clawd: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
 
 The person prompting you decides **what** the video is about. This guide decides **how** it's made. If they ask for something the rules below forbid (a caption, a 3D spin), do what they ask, but only for that thing.
 
@@ -62,7 +62,7 @@ For a worked example, see how the demo times its ending, at the end of this guid
 
 - **Nothing is ever still.** Every emotion has its own idle motion (`feel()`), cameras drift or push, grass sways, stars twinkle and the linework boils. A frozen frame reads as a bug.
 - **Faces act, they never snap.** Change moods with `emotions()`. It does anticipation, a squint, a take and overshoot around every change. Never swap `eyes`/`mouth` by hand between two frames.
-- **Use the principles.** Anticipate big moves (a crouch before a jump, a wind-up before a throw). Squash and stretch (`sq`), overshoot and settle (`backOut`, `spring`) and move on arcs (`arcPt`). Give accessories and props follow-through, and hold key poses long enough to read.
+- **Move like a cartoon, not a machine.** Every move follows the animation principles in the next section.
 - **Clawd is big.** In a medium shot, `u` is about 20–28 (Clawd is 10u wide, 8u tall). In a close-up it's 40–70. Tiny Clawds (u < 12) are for wide establishing shots only, and never for the whole video.
 - **Everything moves on a beat.** `PROJECT.bpm` drives every idle, bounce and dance, so the whole film shares one pulse. Put the hits on beats (`pulse()`, `beatN()`), even with no music.
 
@@ -87,6 +87,24 @@ For a worked example, see how the demo times its ending, at the end of this guid
 - **One thread.** The story has a beginning, a middle and an end, and Clawd's emotional arc follows it. Plan the emotion keys across the whole video, not per shot.
 - **Rhyme the ending with the opening:** the same place, pose or motif, changed. It makes the film feel whole.
 - **Link scenes:** motion continues across cuts, and screen direction stays consistent (if Clawd travels right, keep travelling right). Props and characters carry over.
+
+---
+
+## Animation principles
+
+These are the classic principles of character animation, as they apply here. Most of them fix one problem: motion written as code comes out mechanical, because code moves every part at once, on the same curve, by the same amount.
+
+- **Anticipation.** Before a big move, make a small move the opposite way: a crouch before a jump, a wind-up before a throw, a squint before a take. It tells the viewer something is coming and where to look. `jump()` and `emotions()` build it in.
+- **Squash and stretch.** Bodies squash on impact and stretch when they move fast, keeping their volume (`sq`).
+- **Slow in, slow out.** Almost nothing moves at a constant speed. Things ease out of one pose and into the next. A plain `lerp` over time looks mechanical, so run its progress through an easing (`ease`, `easeIn`, `easeOut`, `backOut`).
+- **Weight.** How something starts and stops says what it weighs. Heavy things take longer to get going and to stop, and land with little bounce. Light things snap into motion, bounce and flutter to rest.
+- **Arcs.** Living things move on arcs, not straight lines: thrown props, hops, arm swings, head turns (`arcPt`).
+- **Overlapping action and follow-through.** Don't move every part at once. The eyes lead, the body follows, and arms, hats, props and tails drag behind, overshoot and settle last. Offset each part's timing a little from the one it hangs off (`spring`, `ring` and `backOut` for the settle).
+- **Avoid twinning.** Code copies values, so both arms end up at the same angle, both eyes blink together and a crowd bounces in unison. Give one arm the action and the other something smaller, and offset timings, phases and `seed`s between characters.
+- **Exaggeration.** Push poses, takes, squash and leans further than feels natural. In a short cartoon, subtle reads as nothing. If it looks like too much on the sheet, pull it back.
+- **Strong key poses.** Each shot's storytelling poses should read as stills, with a clear silhouette and the body leaning into what it's doing, before any motion goes between them. If the key poses don't read, the motion won't fix it.
+- **Show the thought.** A character notices, thinks, then acts, and the eyes move first. The viewer understands a choice when they see it being made.
+- **Secondary action.** Small actions that support the main one (a hat bobbing, an emote popping, grass stirring) add life, but they never compete with it.
 
 ---
 
@@ -125,6 +143,7 @@ Check the storyboard against the rules:
 - Set `duration` (and `bpm`) in [src/config.js](src/config.js).
 - Put your scene in a new file (e.g. `src/scenes/my_video.js`), wrapped in an IIFE, and end it with `shots([...])`. In [studio.html](studio.html), **replace** the `demo.js` script tag with yours.
 - Build and check one shot at a time, in order.
+- Within a shot, block the key poses first and check them as stills (`--sheet` at the key times). Add the motion between them once they read.
 
 ```js
 // src/scenes/my_video.js
@@ -166,7 +185,7 @@ Open each image and actually look at it. Check:
   - At each frame ask: where is the viewer looking right now, and do they understand it yet?
   - Count the frames each read gets (24 frames = 1 s). A read that flashes by in a few frames, or shares its frames with another read, will be missed.
   - After each important moment, is there time to take it in before the next thing starts?
-- **Motion:** in strips, does every move have anticipation and follow-through? Are there any pops, jumps or snaps between frames?
+- **Motion:** in strips, does every move have anticipation and follow-through? Are there any pops, jumps or snaps between frames? Do the parts move at different times, or all at once? Is anything moving at a constant speed, or mirrored left and right? Are the poses pushed far enough to read?
 - **Contacts:** do feet touch the ground? Do held things touch the arm tips? Do thrown things leave from the hand?
 - **Transitions:** check the first and last 0.5 s of every shot and every seam. Does it open and close with a transition?
 - **Rules:** is there any text? Is there any 3D? Is there any dead stretch where nothing is happening?
@@ -392,6 +411,8 @@ These are the things that make a Clawd video look generated. Check your storyboa
 - moments that are over before the viewer understands them
 - a tiny Clawd in a big empty landscape for the whole video
 - faces that snap from one expression to another
+- mechanical motion: linear moves, every part moving at once, both arms or several characters in sync
+- timid poses and takes that barely read
 - hard cuts everywhere, or a video that just starts and stops
 - 3D rotation, perspective boxes or projected turns
 - plain p5 shapes, gradients or digital glows mixed into the paint (use `paint`/`inkLine`/`glow`)
