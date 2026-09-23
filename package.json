@@ -1,5 +1,5 @@
 {
-  "name": "clawd-anim-starter",
+  "name": "claude-animation-base",
   "version": "1.0.0",
   "private": true,
   "description": "Clawd, painted in p5.brush: a character kit and guide for making hand-painted Clawd animations",

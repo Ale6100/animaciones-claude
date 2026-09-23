@@ -1,4 +1,4 @@
-# Clawd animation starter
+# Claude Animation Base
 
 A small kit for making hand-painted cartoons starring Clawd, in [p5.js](https://p5js.org) and [p5.brush](https://github.com/acamposuribe/p5.brush). It includes the character, 31 acted emotions, drawn turnarounds, hats, painted emotes, motion helpers and an offline renderer. It also includes a guide that tells a model how to make something good with them.
 
