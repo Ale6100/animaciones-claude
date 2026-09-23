@@ -1,8 +1,10 @@
 # Animating Clawd
 
-Read this whole file before you draw anything. It covers how to make a short, hand-painted cartoon starring Clawd: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
+Read this whole file before you draw anything. It covers how to make a short, hand-painted cartoon, starring Clawd or any character you design: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
 
 The person prompting you decides **what** the video is about. This guide decides **how** it's made. If they ask for something the rules below forbid (a caption, a 3D spin), do what they ask, but only for that thing.
+
+**No design here is final.** Clawd, the emotions, the props and the helpers are a starting point, not a limit. Change any of them, Clawd's own design included, and add whatever new characters, props or emotions the idea needs. Paint new things with the same tools and rules, so they belong with the rest.
 
 Look at the model sheets first:
 - [docs/emotions.jpg](docs/emotions.jpg): all 31 emotions.
@@ -290,7 +292,7 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 
 ## Clawd
 
-Clawd is the Claude Code mascot: a terracotta block (`PAL.clay`), 10 units wide and 6 tall, with four stubby legs, two little arm nubs and two tall slit eyes. There's no mouth at rest. It's drawn in flat wash with an ink outline and boils like everything else. Keep Clawd on model: don't redesign the body, add a nose or give it hands or fingers. Hats and props are fine.
+Clawd is the Claude Code mascot: a terracotta block (`PAL.clay`), 10 units wide and 6 tall, with four stubby legs, two little arm nubs and two tall slit eyes. There's no mouth at rest. It's drawn in flat wash with an ink outline and boils like everything else. That's the default design, not a rule: change it if the idea needs it. Within one video, though, keep every character on model, with the same shape and features in every shot.
 
 ```js
 clawd(x, y, u, options)   // (x, y) = ground point between the feet; u = size unit
