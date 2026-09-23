@@ -27,7 +27,7 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 ### 1. The medium is solid: brush strokes, flat 2D, boil
 
 - **Paint everything with p5.brush through `paint()` and `inkLine()`.** Characters get flat `wash` colour plus an ink outline. Backgrounds get soft watercolour `fill` shapes, usually with no outline or a thin one. Never use plain p5 shapes (`rect`, `ellipse`, `fill()`): they look like 2000s Flash.
-- **The linework boils.** `jit()` and `random()` are reseeded 12 times a second (`BOIL`), so every drawing wobbles slightly, like hand-drawn animation. That's the look; don't fight it. For anything that must stay put from frame to frame (star positions, tuft heights), use `hash(i)`.
+- **The linework boils.** `jit()` and `random()` are reseeded 12 times a second (`BOIL`), so every drawing wobbles slightly, like hand-drawn animation. That's the look; don't fight it. For anything that must stay put from frame to frame (star positions, tuft heights), use `hash(i)`. Give each separate element its own seed with `boilSeed(key)` (see Engine), or one moving thing makes everything drawn after it jitter.
 - **Everything is flat 2D. Never project 3D.** Don't rotate a box in perspective, don't use `rotateY` or WEBGL 3D and don't fake depth with math. Clawd turns through **drawn key views** (front → 3/4 → side → back 3/4 → back), exactly like a cartoon model sheet: see `turn()` and `spinView()`. Depth comes from overlap, scale and colour (farther = smaller, bluer, paler), never from a projection.
 - **Light is the one exception.** p5.brush mixes colour like pigment, so a yellow glow painted over blue turns green, and a thin wash over it turns grey. Use `glow()` for anything that shines: it adds real light, under the paper grain.
 - **Soft palette, no pure black or white.** Use `PAL.ink` for black and `PAL.cream` or `PAL.paper` for white. Keep colours soft and harmonious, and keep Clawd clearly readable against the background.
@@ -188,6 +188,7 @@ Open each image and actually look at it. Check:
   - Count the frames each read gets (24 frames = 1 s). A read that flashes by in a few frames, or shares its frames with another read, will be missed.
   - After each important moment, is there time to take it in before the next thing starts?
 - **Motion:** in strips, does every move have anticipation and follow-through? Are there any pops, jumps or snaps between frames? Do the parts move at different times, or all at once? Is anything moving at a constant speed, or mirrored left and right? Are the poses pushed far enough to read?
+- **Boil:** in a strip, each pair of frames that share a boil drawing should match except where something moves. Anything still that changes every frame needs its own `boilSeed()`.
 - **Contacts:** do feet touch the ground? Do held things touch the arm tips? Do thrown things leave from the hand?
 - **Transitions:** check the first and last 0.5 s of every shot and every seam. Does it open and close with a transition?
 - **Rules:** is there any text? Is there any 3D? Is there any dead stretch where nothing is happening?
@@ -224,6 +225,10 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 
 - **Frames render in parallel and out of order.** A shot is `fn(t, lt, dur)` and must draw the same frame for the same `t`, every time. No state carried between frames, no counters, no `Math.random()`, no physics that integrates frame by frame. Compute everything from `t`, in closed form (the helpers below do this for you).
 - Randomness: `hash(i)` for stable per-object values, and `jit(a)`/`random()` for boil (they change 12 times a second).
+- **Seed each element with `boilSeed(key)`.** Each boil drawing holds for two frames, so anything that isn't moving must draw the same in both. But a moving thing uses a different amount of randomness each frame, which shifts the stream for everything drawn after it, and all of that re-boils every frame and looks jittery.
+  - `boilSeed(key)` restarts the stream from the boil frame and a key that stays the same every frame (any string or number, unique within the frame).
+  - Call it before each separate element: each background layer, prop and effect.
+  - `clawd()` seeds itself and each of its parts, then reseeds when it's done, so nothing drawn after it depends on its pose. Its key is its call order; set `boilKey` if characters come and go mid-shot.
 - **Each shot paints the whole frame,** background included. The paper texture is under everything and the grain is multiplied over the top, so leaving paper showing is a valid look.
 - **Canvas:** 1920×1080, origin top-left, y down.
 - `LOOPS.name = t => {...}; LOOPS.name.len = 4;` makes a standalone loop (tests, GIFs, sheets), rendered with `--loop=name`.
@@ -316,6 +321,7 @@ clawd(x, y, u, options)   // (x, y) = ground point between the feet; u = size un
 | face | `eyes`, `mouth`, `lookX`/`lookY` (−1..1), `squint` 0..1, `blush` 0..1, `gloom` 0..1, `lid` 0..1, `seed` (blink timing) |
 | colour | `tint` (pale, flush, blue, rosy, green, gold, or any hex) + `tintK`, or `col`/`dk`/`lt` directly |
 | extras | `hat`, `emote` + `emoteK` (0..1 pop) + `emoteAge`, `draw(u, sw)`, `armL(u, sw)`, `armR(u, sw)` |
+| boil | `boilKey`: a stable id for its boil seeds (default: call order) |
 
 Options compose by spreading: `clawd(x, y, u, { ...feel('happy', t), ...turn(t, 1, 1.15, 0, .25), hat: 'party' })`. Later spreads win, so put the emotion first and the pose after it. If both an emotion and a pose move the same field (`dy`, `sq`), add them together rather than letting one silently replace the other.
 
@@ -415,6 +421,7 @@ These are the things that make a Clawd video look generated. Check your storyboa
 - faces that snap from one expression to another
 - mechanical motion: linear moves, every part moving at once, both arms or several characters in sync
 - timid poses and takes that barely read
+- jittery linework: still things re-boiling every frame because something moving before them shifted the random stream (`boilSeed`)
 - hard cuts everywhere, or a video that just starts and stops
 - 3D rotation, perspective boxes or projected turns
 - plain p5 shapes, gradients or digital glows mixed into the paint (use `paint`/`inkLine`/`glow`)

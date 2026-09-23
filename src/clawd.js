@@ -61,13 +61,17 @@ function tintCols(o) {
 //           gloom 0..1 (dark forehead with gloom lines), lid 0..1 (lunchbox mouth, front view only), seed (blink timing)
 //   colour: col / dk / lt, or tint + tintK
 //   extras: hat, emote + emoteK (0..1 pop) + emoteAge (s since it appeared), draw(u, sw), armL(u, sw), armR(u, sw)
+//   boil:   boilKey (a stable id for its boil seeds; defaults to call order, so set it if characters come and go mid-shot)
 function clawd(x, y, u, o = {}) {
+  // each part boils from its own seed (see boilSeed), so a moving arm never re-boils the body, or the next character
+  const id = o.boilKey ?? ++CLAWD_N, rs = part => boilSeed(`clawd ${id} ${part}`);
   x += (o.dx || 0) * u;
   const V = VIEWS[o.view] || VIEWS.front;
   const dy = (o.dy || 0) * u, sq = (o.sq || 0) + (o.take || 0), sm = clamp(o.smear || 0);
   const sw = clamp(u / 15, .45, 2.4) * (o.swMul || 1), J = u * .07;
   const { col, dk, lt } = tintCols(o), far = mixCol(dk, PAL.ink, .22);
 
+  rs('shadow');
   if (!o.noShadow) {
     const f = 1 - Math.min(.5, Math.abs(o.dy || 0) * .06), w = (V.R - V.L) / 10;
     paint(ellPts(x, y + u * .15, u * 5.6 * f * w, u * f, 22), { fill: PAL.ink, fillOp: 90, bleed: .25, tex: .3, border: .1, ink: null });
@@ -80,6 +84,7 @@ function clawd(x, y, u, o = {}) {
   scale((o.flip ? -1 : 1) * (o.sx ?? 1) * (1 + sq * .6) * (1 + sm * .35), (o.sy ?? 1) * (1 - sq));
 
   const arm = ([px, dir, which, layer]) => {
+    rs('arm' + which);
     const a = which === 'L' ? (o.aL ?? .2) : (o.aR ?? .2), hook = which === 'L' ? o.armL : o.armR;
     // a raised (or dropped) arm slides its root out to the body's edge, so it stands beside the body instead of behind it
     push(); translate((px + dir * .55 * clamp((Math.abs(a) - .7) / .9)) * u, -4.5 * u);
@@ -98,6 +103,7 @@ function clawd(x, y, u, o = {}) {
   // arms behind, then legs (under the body), then the body, then arms in front
   V.arms.filter(a => a[3] !== 1).forEach(arm);
   if (!o.noLegs) V.legs.forEach(([lx, isFar], i) => {
+    rs('leg' + i);
     let h = 2.2, sx = 0;
     if (o.walk != null) {
       if (o.view === 'side') {   // profile: diagonal pairs swing together, lifting as they swing forward
@@ -108,6 +114,7 @@ function clawd(x, y, u, o = {}) {
     paint(rectPts((lx + sx) * u, -2.4 * u, u, h * u, J * .6), { wash: isFar ? far : dk, washOp: 255, ink: PAL.ink, sw: sw * .8 });
   });
 
+  rs('body');
   const lid = V === VIEWS.front ? o.lid || 0 : 0;
   if (lid > .01) lunchbox(u, o, sw, J, lid, col, dk, lt);
   else {
@@ -127,22 +134,24 @@ function clawd(x, y, u, o = {}) {
       push(); translate(F.cx * u, 0); scale(F.fw, 1);
       if (o.blush) blush(u, sw, F, o.blush === true ? 1 : o.blush);
       if (o.hat === 'mask' && F.sides.length > 1) paint([[-5.5 * u, -7.7 * u], [5.5 * u, -7.7 * u], [4.4 * u, -4.7 * u], [.6 * u, -5.4 * u], [-.6 * u, -5.4 * u], [-4.4 * u, -4.7 * u]], { wash: PAL.violet, ink: PAL.ink, sw: sw * .7 });
-      eyes(u, o, sw, F.sides, sm);
+      rs('eyes'); eyes(u, o, sw, F.sides, sm); rs('mouth');
       push(); translate(F.mx * u, 0); mouth(u, o.mouth, sw); pop();
       if (['cat', 'masq', 'bowtie'].includes(o.hat)) faceHat(u, o.hat, sw, F.sides);
       pop();
     }
-    push(); translate(V.hat * u, 0); scale(V.hw, 1); hat(u, o.hat, sw); pop();
+    rs('hat'); push(); translate(V.hat * u, 0); scale(V.hw, 1); hat(u, o.hat, sw); pop();
   }
   V.arms.filter(a => a[3] === 1).forEach(arm);
-  if (o.draw) o.draw(u, sw);
+  rs('draw'); if (o.draw) o.draw(u, sw);
   pop();
 
+  rs('emote');
   if (o.emote) {
     const top = EMOTE_TOP.includes(o.emote), dir = o.flip ? -1 : 1;
     const ex = top ? x + dir * V.hat * u : x + dir * (V.R + .4) * u, ey = y + dy + (top ? -10.4 : -8.6) * u * (1 - sq);
     emote(o.emote, ex, ey, u * .9, o.emoteK ?? 1, o.emoteAge ?? T);
   }
+  rs('after');   // so whatever is drawn next doesn't depend on this pose
 }
 
 // The lunchbox mouth: the top 2.9u of the body hinges open at the back-left corner (front view only). The mouth is the

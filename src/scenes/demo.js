@@ -10,19 +10,23 @@
   // ---------- set pieces ----------
   // ripple (optional): { x, y, t0 }, a wave of bright twinkles spreading out from (x, y) at time t0.
   function sky(t, horizon = 1.2, ripple = null) {
+    boilSeed('sky');
     paint(rectPts(-600, -400, W + 1200, H + 800), { wash: PAL.night, ink: null });   // oversized: the camera pans
     paint(ellPts(W / 2, H * .95, W * .75, H * .45 * horizon, 30, 10), { fill: PAL.violet, fillOp: 110, bleed: .3, tex: .6, ink: null });
     paint(ellPts(W * .3, H * .15, W * .35, H * .25, 24, 10), { fill: PAL.indigo, fillOp: 90, bleed: .3, tex: .5, ink: null });
-    for (let i = 0; i < 42; i++) {   // twinkling stars, each on its own clock
+    for (let i = 0; i < 42; i++) {   // twinkling stars, each on its own clock and its own boil seed
+      boilSeed('star' + i);
       const x = hash(i) * (W + 200) - 100, y = hash(i + 100) * H * .6 - 40;
       let tw = .55 + .45 * Math.sin(t * (2 + 2 * hash(i + 300)) + i);
       if (ripple) { const a = t - ripple.t0 - Math.hypot(x - ripple.x, y - ripple.y) / 1100; if (a > 0) tw += 1.3 * Math.exp(-a * 5) * Math.min(1, a * 25); }
       paint(starPts(x, y, (3 + 5 * hash(i + 200)) * tw, .35, 4), { wash: PAL.cream, washOp: Math.min(255, 150 + 100 * tw), ink: null });
     }
+    boilSeed('moon');
     paint(ellPts(260, 170, 70, 70, 24, 1.5), { wash: PAL.cream, fill: PAL.ochre, fillOp: 40, ink: PAL.ink, sw: .8 });
     paint(ellPts(245, 150, 16, 12, 10), { fill: mixCol(PAL.cream, PAL.ochre, .5), fillOp: 120, ink: null });
   }
   function hill(cx, cy, rx, ry, col, t, tufts = 0) {
+    boilSeed('hill' + cx);   // keyed by its position, which never changes
     paint(ellPts(cx, cy, rx, ry, 40, 2), { wash: col, fill: mixCol(col, PAL.night, .35), fillOp: 90, bleed: .08, tex: .6, ink: PAL.ink, sw: 1 });
     for (let i = 0; i < tufts; i++) {   // grass tufts along the top, swaying
       const a = -Math.PI / 2 + (hash(i + cx) - .5) * 1.6, x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry + 4, sw = wob(t, .5, hash(i) * 3) * 5;
@@ -60,6 +64,7 @@
     camBegin(kf(t, [[0, 900], [2.9, 900], [4.4, 1230]]) + shake[0], kf(t, [[0, 560], [2, 540]]) + shake[1], kf(t, [[0, 1], [1.85, 1.07], [2.05, 1.03], [4.4, 1.01]]));
     sky(t);
     // the falling star, its trail, and the glow where it lands
+    boilSeed('fall');
     if (t > tFall0 && t < tLand + .05) {
       const P = []; for (let k = 6; k >= 0; k--) P.push(fallAt(Math.max(tFall0, t - k * .045)));
       if (Math.hypot(P[6][0] - P[0][0], P[6][1] - P[0][1]) > 8) paint(ribbon(P, 2, 26), { wash: PAL.cream, fill: PAL.ochre, fillOp: 90, ink: null });
@@ -83,6 +88,7 @@
     const eye = toScreen(x, gy - 4 * u);   // screen position of Clawd, for the iris
     camEnd();
     if (lt < .5) iris(...eye, lerp(0, 1500, easeIn(lt / .5)));   // open on Clawd
+    boilSeed('transition');
     if (lt > dur - .3) brushWipe((lt - (dur - .3)) / .6, NIGHT);
   }
 
@@ -98,6 +104,7 @@
     camBegin(960 + 18 * Math.sin(lt * .8), kf(lt, [[0, 530], [tThrow, 515], [tHome + .1, 470]]), kf(lt, [[0, 1], [tThrow, 1.04], [tHome + .1, 1], [dur, 1.06]]));
     sky(t, 1.4, { x: 1440, y: 150, t0: t - lt + tHome });   // the sky twinkles hello when the star gets home
     hill(1300, 1180, 1300, 330, mixCol(PAL.teal, PAL.night, .45), t, 0);
+    boilSeed('ground');
     paint(rectPts(-200, G - 20, W + 400, 400, 3), { wash: mixCol(PAL.sap, PAL.night, .3), fill: mixCol(PAL.sap, PAL.night, .55), fillOp: 100, bleed: .05, tex: .6, ink: null });
     inkLine([[-200, G - 18], [W / 2, G - 24], [W + 200, G - 16]], 1, PAL.ink, 'ink', .5);
 
@@ -144,6 +151,7 @@
     }
     const eye = toScreen(x, G - 4 * u);
     camEnd();
+    boilSeed('transition');
     if (lt < .3) brushWipe(.5 + lt / .6, NIGHT);
     if (lt > tIris) {   // iris to a small circle on Clawd, hold a moment, then shut
       const r = lt < tIris + .5 ? lerp(1500, 250, ease(seg(lt, tIris, tIris + .5))) : lt < dur - .3 ? lerp(250, 232, seg(lt, tIris + .5, dur - .3)) : lerp(232, 0, easeIn(seg(lt, dur - .3, dur - .05)));

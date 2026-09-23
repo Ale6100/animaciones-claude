@@ -18,6 +18,12 @@ const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x
 const bpOf = t => (t - OFF) / BEAT;
 // Seeded by the boil frame, so linework "boils" at BOIL fps like hand-drawn animation.
 const jit = a => (random() * 2 - 1) * a;
+// Each boil drawing holds for several frames, so whatever isn't moving must draw the same until the next one. But a moving
+// thing uses a different amount of randomness each frame, which shifts the stream for everything drawn after it and makes
+// that re-boil every frame (jitter). boilSeed(key) restarts the stream from the boil frame and a key (any string or
+// number) that's the same every frame: call it before each separate element. clawd() does this for itself and its parts.
+let BOILN = 0, CLAWD_N = 0;
+const boilSeed = key => { let h = 2166136261; for (const c of key + '|' + BOILN) h = Math.imul(h ^ c.charCodeAt(0), 16777619); randomSeed(h >>> 0); };
 
 // ---------- timing helpers (everything is a pure function of t; no state survives between frames) ----------
 const seg = (t, a, b) => clamp((t - a) / (b - a));                 // 0..1 progress of t through [a, b]
@@ -268,7 +274,7 @@ function draw() {
   if (!window.ready) return;
   LETTERS = []; CAM = null;
   push(); translate(-W / 2, -H / 2);
-  randomSeed(1000 + Math.floor(T * BOIL)); noiseSeed(77);
+  BOILN = Math.floor(T * BOIL); CLAWD_N = 0; boilSeed('frame'); noiseSeed(77);
   image(paperG, 0, 0);
   drawWorld(T);
   pop();
