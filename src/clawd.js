@@ -209,10 +209,19 @@ function eyes(u, o, sw, sides, smear = 0) {
   const sqz = clamp(o.squint || 0);
   if (smear > .5) { for (const s of sides) inkLine([[s * 2.5 * u - .9 * u, -6 * u], [s * 2.5 * u + .9 * u, -6 * u]], sw * 1.4, PAL.ink, 'ink', 0); return; }
   if (sqz > .8) { for (const s of sides) inkLine([[s * 2.5 * u - .8 * u, -5.9 * u], [s * 2.5 * u + .8 * u, -5.9 * u]], sw, PAL.ink, 'ink', 0); return; }
-  if (kinds[0] === 'shades') {
-    const [a, b] = sides.length > 1 ? [-4.6, 4.6] : [.8, 3.2];
-    paint(rrPts(a * u, -7.5 * u, (b - a) * u, 2.2 * u, .6 * u), { wash: PAL.ink, ink: null });
-    inkLine([[(a + .7) * u, -7 * u], [(a + 2.2) * u, -7.1 * u]], sw * .5, PAL.cream, 'inkfine', 0);
+  if (kinds[0] === 'shades') {   // sunglasses: two dark lenses, a bridge, arms running back along the head
+    const P = pts => pts.map(([a, b]) => [a * u, b * u]);
+    const lens = cx => P([[cx - 1.4, -7.1], [cx + 1.4, -7.1], [cx + 1.3, -6.2], [cx + .8, -5.35], [cx, -5.2], [cx - .8, -5.35], [cx - 1.3, -6.2]]);
+    if (sides.length > 1) {
+      for (const s of [-1, 1]) inkLine(P([[s * 3.9, -6.85], [s * 5, -6.95]]), sw * .8, PAL.ink, 'ink', 0);
+      inkLine(P([[-1.15, -6.75], [0, -7.05], [1.15, -6.75]]), sw * .8, PAL.ink, 'ink', .5);
+    } else inkLine(P([[1.1, -6.85], [-5, -6.95]]), sw * .8, PAL.ink, 'ink', 0);   // profile: the arm runs back to the ear
+    for (const s of sides) {
+      const cx = s * 2.5;
+      paint(lens(cx), { wash: '#2A2740', ink: PAL.ink, sw: sw * .9, curv: .3 });
+      inkLine(P([[cx - .85, -6.35], [cx - .25, -6.85]]), sw * .45, PAL.cream, 'inkfine', 0);   // glint
+      inkLine(P([[cx - .45, -5.85], [cx - .05, -6.2]]), sw * .3, PAL.cream, 'inkfine', 0);
+    }
     return;
   }
   if (sqz > 0) { push(); translate(0, -6 * u); scale(1 + sqz * .15, 1 - sqz); translate(0, 6 * u); }

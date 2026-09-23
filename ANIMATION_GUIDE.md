@@ -18,6 +18,8 @@ Every rule below serves one of three goals.
 - **Alive.** Something is always moving and something is always happening. Faces act instead of snapping, and characters are big enough to feel.
 - **One piece.** It's one short film, not a pile of clips. Plan it before you draw it, and link every scene to the next.
 
+Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is the rule models get wrong most often.
+
 ## The rules
 
 ### 1. The medium is solid: brush strokes, flat 2D, boil
@@ -42,7 +44,47 @@ Every rule below serves one of three goals.
 - **Cause, then reaction.** When something happens, Clawd reacts to it: a take, an emotion change, a turn toward it. The reaction is often the funniest part, so give it time.
 - **Pay it off.** Whatever you set up in a shot (a falling star, a door, a sandwich) gets resolved on screen, in that shot or a later one.
 
-### 4. Alive
+### 4. Timing: model the viewer
+
+Timing turns a set of drawings into a story. It's also where generated animation fails most often: everything moves at one brisk speed, events pile on top of each other, and the ending is over before anyone understands it.
+
+You know what happens because you wrote the code. The viewer sees it for the first time, once, at full speed. **Time every moment for what the viewer needs to understand, and for how long it takes them to get it.**
+
+- **Write the reads.** For each shot, list in order what the viewer must understand. Each one is a *read*: "a star falls", "it lands behind the hill", "Clawd noticed", "Clawd has an idea". Then give each read its own time on screen:
+  - about 0.3 s for the eye to find something new (longer if it's small or far from where the eye already is)
+  - 0.5–1 s to understand it
+  - a held moment after anything important, before the next thing starts
+- **One read at a time.** Don't start a new read while the viewer is still taking in the last one. Go cause → look → reaction: the star lands (hold), Clawd notices (hold), Clawd reacts. When two things happen at once, the viewer sees only one of them.
+- **Fast actions, slow meanings.** The motion itself can be quick (a throw takes 0.15 s, a take 0.1 s), but what it means needs held time. Anticipation tells the viewer where to look before the action, and the hold after it lets them understand it. Hurry through travel and transport, and slow down on faces and consequences.
+- **Lead the eye.** The viewer looks at whatever moves, is bright or is big. Before an important read, get their eye to the right place: Clawd looks at it, the camera turns to it, or it glows or moves first. If it happens at the far edge of the frame, give the eye time to get there, or bring it closer.
+- **The payoff gets the most time.** The end of the story is what the whole video builds toward, and generated videos rush it more than anything else. After the payoff, hold. Let Clawd react, hold again, then close slowly: iris to a small circle on Clawd, hold about 0.5 s, then shut. The last shot's resolution needs at least 2–3 seconds before the transition out starts.
+- **Let the reads set the length, not a template.** Shots are usually 1.5–4 s, but a shot with four reads can't be 1.5 s. Don't pad either: when a shot's last read has landed, move on.
+
+Rough budgets (tune them per video):
+
+| read | time on screen |
+|---|---|
+| a new character, object or place registers | 0.5–1 s |
+| an event (impact, arrival, reveal), then the hold after it | 0.1–0.3 s, then 0.5–1 s |
+| a reaction: the take, then the new emotion held | 0.8–1.5 s |
+| the beat before a punchline | 0.3–0.6 s |
+| the ending: payoff, reaction, goodbye, close | 2.5–4 s |
+
+**Worked example: the demo's ending.** Here is shot B of [src/scenes/demo.js](src/scenes/demo.js), from the throw on, in video time:
+
+| time | read | why it's timed this way |
+|---|---|---|
+| 6.95–7.1 | wind-up and throw | fast motion; it reads because the wind-up anticipates it |
+| 7.1–7.9 | the star flies home | 0.8 s, so the eye can follow it from Clawd to the top of the frame; the camera eases back to give it sky |
+| 7.9–8.35 | it arrives: a flare, a sparkle, the sky twinkles | the payoff. Clawd only watches, so nothing competes with it |
+| 8.35–8.95 | Clawd falls in love | the reaction starts only after the viewer has seen the cause |
+| 8.95–9.4 | Clawd waves goodbye | a new action, on its own |
+| 9.4–9.8 | the star twinkles back | the answer to the wave |
+| 9.8–11.0 | iris to Clawd, hold, shut | the last look; the film ends on the character |
+
+The first version packed all of this into about 1.3 s, and nobody could tell what had happened.
+
+### 5. Alive
 
 - **Nothing is ever still.** Every emotion has its own idle motion (`feel()`), cameras drift or push, grass sways, stars twinkle and the linework boils. A frozen frame reads as a bug.
 - **Faces act, they never snap.** Change moods with `emotions()`. It does anticipation, a squint, a take and overshoot around every change. Never swap `eyes`/`mouth` by hand between two frames.
@@ -50,7 +92,7 @@ Every rule below serves one of three goals.
 - **Clawd is big.** In a medium shot, `u` is about 20–28 (Clawd is 10u wide, 8u tall). In a close-up it's 40–70. Tiny Clawds (u < 12) are for wide establishing shots only, and never for the whole video.
 - **Everything moves on a beat.** `PROJECT.bpm` drives every idle, bounce and dance, so the whole film shares one pulse. Put the hits on beats (`pulse()`, `beatN()`), even with no music.
 
-### 5. Transitions always
+### 6. Transitions always
 
 - **Into the first shot:** never start on a hard frame. Open with an iris-in on Clawd, a brush wipe or a push-in from black or paper.
 - **Between every pair of shots**, use a transition that belongs to the story:
@@ -64,19 +106,13 @@ Every rule below serves one of three goals.
 - **Out of the last shot:** end on a pose and close it with an iris out on Clawd, a wipe or a fade to paper. Never just stop.
 - **Changes inside a shot are transitions too:** emotions go through `emotions()` and turns go through `turn()`. Props arrive and leave on arcs, never popping in.
 
-### 6. One piece: a vision before any code
+### 7. One piece: a vision before any code
 
 - **Storyboard first**, in writing, before you write any scene code (the workflow below has the format). If you're working with a person, show them the storyboard and let them react before you build.
 - **One world.** Pick a palette and a setting that carries through, with a colour arc across the video (e.g. cold night → warm dawn as Clawd's mood lifts).
 - **One thread.** The story has a beginning, a middle and an end, and Clawd's emotional arc follows it. Plan the emotion keys across the whole video, not per shot.
 - **Rhyme the ending with the opening:** the same place, pose or motif, changed. It makes the film feel whole.
 - **Link scenes:** motion continues across cuts, and screen direction stays consistent (if Clawd travels right, keep travelling right). Props and characters carry over.
-
-### Pacing
-
-- Shots are usually **1.5–4 s**. Short videos (5–20 s) have 2–6 shots; longer ones keep the same cadence.
-- **Time the story, not the shots:** setup (a beat), event (fast), reaction (hold), consequence.
-- Don't linger. When a shot's event is over, move on.
 
 ---
 
@@ -93,12 +129,23 @@ Motif: the thing that recurs and pays off.
 Clawd's arc: emotion keys across the whole video (e.g. bored → curious → scared → determined → proud).
 Shots:
   A  0.0–3.2  [transition in: iris on Clawd]  what's seen · the EVENT · Clawd's reaction · camera
+     reads:  0.0–0.5  iris opens on Clawd asleep on a hill
+             0.9–1.6  a star falls behind the far hill (the eye goes up, then down)
+             1.6–2.2  it lands: a glow and a shake · hold
+             2.2–3.2  Clawd wakes: surprised (0.5 s), then an idea (held)
   B  3.2–6.0  [transition: brush wipe]        ...
   ...
   [transition out: iris out on Clawd]
 ```
 
-Check it against the rules: is there an event in every shot, a transition at every seam, no text anywhere, and does the ending rhyme with the opening?
+The reads are the timing sheet. Give each one a start and an end, check it against the budgets in rule 4, and make sure no two important reads overlap. If a shot's reads don't fit its length, lengthen the shot or cut a read; don't squeeze them.
+
+Check the storyboard against the rules:
+- Is there an event in every shot?
+- Does every read have time to land, and does the ending get the most?
+- Is there a transition at every seam?
+- Is there any text anywhere?
+- Does the ending rhyme with the opening?
 
 ### 2. Build
 
@@ -141,6 +188,11 @@ node render.mjs --sheet=2.3,2.4 --crop=760,420,500,400 --w=500 --out=out/check/f
 Open each image and actually look at it. Check:
 
 - **Read:** is the event of each shot clear from its sheet alone? Is Clawd big enough, and does Clawd separate from the background?
+- **Timing.** You can't judge timing from single frames, so read it like a viewer:
+  - Render the shot as a sheet at a fixed step (every 0.1–0.15 s) and read it left to right.
+  - At each frame ask: what is the viewer looking at right now, and do they understand it yet?
+  - Count how long each read stays on screen (24 frames = 1 s). A read shorter than about half a second will be missed, and so will one that shares its frames with another read.
+  - Pay special attention to the ending: after the payoff, is there time to take it in before the transition out?
 - **Motion:** in strips, does every move have anticipation and follow-through? Are there any pops, jumps or snaps between frames?
 - **Contacts:** do feet touch the ground? Do held things touch the arm tips? Do thrown things leave from the hand?
 - **Transitions:** check the first and last 0.5 s of every shot and every seam. Does it open and close with a transition?
@@ -170,7 +222,7 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 | `src/clawd.js` | Clawd: views, emotions, eyes, mouths, hats, emotes, moves |
 | `src/timeline.js` | `shots()`, `LOOPS`, `brushWipe()` |
 | `src/sheets.js` | the model sheets as loops (`?loop=emotions`, `?loop=views`) |
-| `src/scenes/demo.js` | an 8-second example. **Don't copy it** (see the end of this guide) |
+| `src/scenes/demo.js` | an 11-second example. **Don't copy it** (see the end of this guide) |
 | `studio.html` | open it in Chrome to scrub the video (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
 | `render.mjs` | headless renderer: sheets, strips, crops, stills, PNG loops, MP4 |
 
@@ -363,6 +415,8 @@ These are the things that make a Clawd video look generated. Check your storyboa
 
 - signs, captions, labels or speech bubbles with words
 - Clawd standing still and smiling while nothing happens
+- everything moving at one brisk speed, with events stacked on top of each other and no holds
+- an ending that's over before the viewer understands what happened
 - a tiny Clawd in a big empty landscape for the whole video
 - faces that snap from one expression to another
 - hard cuts everywhere, or a video that just starts and stops
