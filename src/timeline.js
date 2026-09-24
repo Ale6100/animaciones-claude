@@ -21,6 +21,31 @@ function drawWorld(t) {
     CAM = null;
   }
   flushLetters();
+  karaoke(t);
+}
+
+// ---------- karaoke subtitle pill ----------
+function karaoke(t) {
+  const lyrics = window.LY || [];
+  const L = lyrics.find(l => t >= l[0] && t < l[1]);
+  if (!L) { KARAOKE = null; return; }
+  const [a, b, txt] = L;
+  outX.font = '800 44px "Shantell Sans", "Permanent Marker", cursive, sans-serif';
+  const tw = outX.measureText(txt).width, grow = easeOut((t - a) / .18) * (1 - ease((t - (b - .12)) / .12));
+  if (grow < .02) { KARAOKE = null; return; }
+  const w = (tw + 90) * grow, x0 = 960 - w / 2, y0 = 974;
+  const pts = [
+    [x0 + jit(6), y0 + jit(4)],
+    [x0 + w / 2, y0 - 3 + jit(3)],
+    [x0 + w + jit(6), y0 + jit(4)],
+    [x0 + w + 12 + jit(6), y0 + 44],
+    [x0 + w + jit(6), y0 + 88 + jit(4)],
+    [x0 + w / 2, y0 + 91 + jit(3)],
+    [x0 + jit(6), y0 + 88 + jit(4)],
+    [x0 - 12 + jit(6), y0 + 44]
+  ];
+  paint(pts, { wash: PAL.night || '#1b1820', washOp: 235, fill: PAL.violet || '#8964b5', fillOp: 75, tex: .7, border: .4, ink: null });
+  KARAOKE = { a, b, txt, grow };
 }
 
 function placeholder(t) {

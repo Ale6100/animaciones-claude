@@ -279,11 +279,32 @@ function draw() {
   drawWorld(T);
   pop();
 }
+let KARAOKE = null;
+function drawKaraokeText(c) {
+  if (!KARAOKE || KARAOKE.grow < .6) return;
+  const { a, b, txt } = KARAOKE, t = T;
+  c.font = '800 44px "Shantell Sans", "Permanent Marker", cursive, sans-serif';
+  c.textBaseline = 'middle'; c.textAlign = 'left';
+  const words = txt.split(' '), sp = c.measureText(' ').width, ws = words.map(w => c.measureText(w).width);
+  const total = ws.reduce((p, q) => p + q, 0) + sp * (words.length - 1);
+  const singDur = Math.min(b - a - .1, .45 + txt.length * .075), sung = clamp((t - a) / singDur) * txt.replace(/ /g, '').length;
+  let x = 960 - total / 2, done = 0; const y = 1018;
+  words.forEach((w, i) => {
+    const f = clamp((sung - done) / w.length); done += w.length;
+    c.fillStyle = PAL.cream; c.fillText(w, x, y);
+    if (f > 0) {
+      c.save(); c.beginPath(); c.rect(x - 2, y - 36, ws[i] * f + 2, 72); c.clip();
+      c.fillStyle = PAL.ochre; c.fillText(w, x, y); c.restore();
+    }
+    x += ws[i] + sp;
+  });
+}
 function composite(t) {
   const c = outX;
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.drawImage(drawingContext.canvas, 0, 0, W, H);
   drawLetters(c);
+  drawKaraokeText(c);
   c.globalCompositeOperation = 'multiply'; c.drawImage(grainC, 0, 0);
   c.globalCompositeOperation = 'source-over';
 }

@@ -1,2 +1,26 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Generated outputs (rendered videos, frames, contact sheets, stills)
 out/
+*.mp4
+*.m4v
+
+# Generated audio files (keep the generator script)
+audio/*.wav
+audio/*.mp3
+!audio/generate_music.py
+
+# Generated / custom scenes (keep demo.js as the starter template)
+src/scenes/*
+!src/scenes/demo.js
+
+# Custom storyboards & generated previews
+STORYBOARD*.md
+docs/*_summary.jpg
+
+# Python cache & OS files
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
