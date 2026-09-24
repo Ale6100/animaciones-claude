@@ -6,14 +6,15 @@ out/
 *.mp4
 *.m4v
 
-# Generated audio files (keep the generator script)
+# Generated audio files (keep the generator scripts)
 audio/*.wav
 audio/*.mp3
-!audio/generate_music.py
+!audio/*.py
 
-# Generated / custom scenes (keep demo.js as the starter template)
+# Generated / custom scenes (keep demo.js and claude_pop.js as starter templates)
 src/scenes/*
 !src/scenes/demo.js
+!src/scenes/claude_pop.js
 
 # Custom storyboards & generated previews
 STORYBOARD*.md

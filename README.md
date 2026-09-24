@@ -51,32 +51,65 @@ node render.mjs --encode --audio=audio/your_song.mp3 --out=out/my_video.mp4
 
 ---
 
+## 🎭 Animation Styles: Two Paradigms
+
+This toolkit supports two distinct creative traditions developed by the community:
+
+### 1. The Classic Narrative Style ([John Heibel / PDoomVideo](https://github.com/JohnHeibel/PDoomVideo))
+* **Philosophy**: Intimate, character-driven storytelling with a hand-painted picture-book feel.
+* **Staging**: Solo protagonist (Clawd) exploring domestic or natural environments.
+* **Animation Rules**: Minimal to no text (`letter()` only as a rare exception), painted emoji reactions (`feel()`, `emote()`), subtle acting beats, and organic watercolor bleeding washes (`PAL.clay`, `PAL.night`).
+* **Pacing**: Deliberate, allowing each visual "read" several seconds to register.
+
+### 2. The K-Pop & Kinetic Pop Style ([Donald Jewkes / Claude Pop](https://x.com/donaldjewkes/status/2102801274173587569))
+* **Philosophy**: High-energy concert visuals, infectious pop hooks, and attention dynamics.
+* **Staging**: **Group choreography** featuring Clawd as the center superstar flanked by **synchronized backup dancers** (`dancer1`, `dancer2`) with distinct accessories (shades, beanies, headphones).
+* **Motion Graphics**:
+  - **Navier-Stokes fluid streamlines**: Sinusoidal ribbons representing latent space vector fields.
+  - **Dynamic concert lighting**: Swept conical spotlights (`glow()`), laser beams, floor reflections, and pyro spark fountains.
+  - **Bold kinetic typography**: Neon-bordered badges and banners popping on kick drum drops.
+* **Pacing**: Snappy camera pushes, dutch angles, and synchronized breakdowns on the beat grid.
+
+---
+
+## 🎵 Audio & Singing: Production Guidelines
+
+### The Truth About Voice & Music Generation
+1. **Singing vs. Speech (TTS)**:
+   - Python-based TTS engines (such as `edge-tts`) produce **spoken narration**, not singing. They lack musical pitch control, melodic phrasing, vibrato, and emotional rhythm ("speaking with low energy" over a beat).
+   - **Recommended Workflow**: Generate the song using dedicated AI singing/music platforms (**Suno**, **Udio**, **ElevenLabs Music**) or import an existing studio song.
+2. **Strict Timestamp Synchronization**:
+   - The animation engine is deterministic: `src/config.js` sets `bpm` and `duration`.
+   - Karaoke subtitles in [`src/lyrics.js`](src/lyrics.js) and visual cues in your scene script must **strictly match** the exact timestamps of the vocal track. Always verify that lyrics start and end at the exact seconds the vocalist sings.
+
+---
+
 ## 🎨 How to Make Your Own Music Video
 
 Creating a music video on **any topic** takes just 4 steps:
 
 1. **Provide or Generate the Song**:
-   - Place your track in `audio/my_song.mp3` (or run `python audio/generate_music.py`).
+   - Place your real vocal/instrumental track in `audio/my_song.mp3` (recommended: Suno/Udio).
    - Set the song path, duration, and BPM in [`src/config.js`](src/config.js):
      ```javascript
      const PROJECT = {
        title: "My Custom Music Video",
        audio: "audio/my_song.mp3",
-       duration: 20, // seconds
-       bpm: 120
+       duration: 36, // seconds
+       bpm: 124
      };
      ```
 2. **Add Timed Lyrics**:
-   - Define your lyrics in [`src/lyrics.js`](src/lyrics.js):
+   - Define your lyrics in [`src/lyrics.js`](src/lyrics.js) matched to vocal timestamps:
      ```javascript
      window.LY = [
-       [0.5, 4.0, "First line of the song"],
-       [4.2, 8.0, "Second line with funky rhymes"]
+       [1.5, 4.6, "Booting in the spotlight, five million tokens deep!"],
+       [5.0, 8.2, "Self-attention glowing while the world is fast asleep!"]
      ];
      ```
 3. **Choreograph the Scenes**:
    - Create your scene script in `src/scenes/my_video.js` using `shots([[t0, fn], [t1, fn], ...])`.
-   - Use Clawd's built-in poses, emotes (`feel('happy', t)`), and dancing styles (`move('bounce', t)`).
+   - Choose between **Solo Narrative** (`clawd(x, y, u, feel('happy', t))`) or **Group K-Pop** (`dancer()`, synchronized backup units, fluid fields, spotlights).
    - Add `<script src="src/scenes/my_video.js"></script>` to `studio.html`.
 4. **Export**:
    - Preview in `studio.html`, then run `node render.mjs --frames` and `node render.mjs --encode`.
