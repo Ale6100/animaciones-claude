@@ -7,6 +7,40 @@
 const SHOTS = [];
 function shots(list) { SHOTS.push(...list); SHOTS.sort((a, b) => a[0] - b[0]); }
 
+// ---------- Multi-Scene Registry ----------
+// Allows scenes to be self-contained modules without mutating global files.
+const SCENES = window.SCENES = {};
+let ACTIVE_SCENE = window.ACTIVE_SCENE = null;
+
+window.registerScene = function(id, def) {
+  SCENES[id] = { id, ...def };
+  if (!ACTIVE_SCENE) {
+    window.loadScene(id);
+  }
+};
+function registerScene(id, def) { return window.registerScene(id, def); }
+
+window.loadScene = function(id) {
+  const s = SCENES[id];
+  if (!s) return false;
+  ACTIVE_SCENE = window.ACTIVE_SCENE = s;
+  DUR = s.duration != null ? s.duration : ((typeof PROJECT !== 'undefined' && PROJECT.duration) || 11.0);
+  BPM = s.bpm != null ? s.bpm : ((typeof PROJECT !== 'undefined' && PROJECT.bpm) || 120);
+  BEAT = 60 / BPM;
+  OFF = s.offset != null ? s.offset : ((typeof PROJECT !== 'undefined' && PROJECT.offset) || 0);
+  window.LY = s.lyrics || [];
+  SHOTS.length = 0;
+  if (s.shots) {
+    SHOTS.push(...s.shots);
+    SHOTS.sort((a, b) => a[0] - b[0]);
+  }
+  if (typeof window.onSceneChange === 'function') {
+    window.onSceneChange(s);
+  }
+  return true;
+};
+function loadScene(id) { return window.loadScene(id); }
+
 // Standalone loops (model sheets, GIFs, tests), outside the main timeline: window.LOOP = LOOPS[name] swaps the whole
 // frame for that function, called with loop time. Give each a length: LOOPS.x = t => { ... }; LOOPS.x.len = 4;
 const LOOPS = {};

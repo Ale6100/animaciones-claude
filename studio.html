@@ -9,15 +9,19 @@
   main { padding: 12px; display: grid; gap: 10px; max-width: 1280px; margin: 0 auto; }
   #out { width: 100%; aspect-ratio: 16 / 9; height: auto; background: #F3EBDC; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
   .p5Canvas { display: none !important; }
-  .bar { display: flex; gap: 12px; align-items: center; background: #26222d; padding: 10px 14px; border-radius: 8px; }
-  #scrub { flex: 1; cursor: pointer; accent-color: #00D8FE; }
-  #tt { font-variant-numeric: tabular-nums; min-width: 190px; color: #bbb; }
+  .bar { display: flex; gap: 12px; align-items: center; background: #26222d; padding: 10px 14px; border-radius: 8px; flex-wrap: wrap; }
+  #scrub { flex: 1; min-width: 200px; cursor: pointer; accent-color: #00D8FE; }
+  #tt { font-variant-numeric: tabular-nums; min-width: 170px; color: #bbb; }
   .btn {
     background: #00D8FE; color: #111; font-weight: 700; border: none; border-radius: 6px;
     padding: 7px 18px; cursor: pointer; font-size: 14px; transition: transform 0.1s, background 0.2s;
   }
   .btn:hover { background: #5ee5ff; transform: scale(1.03); }
   .btn:active { transform: scale(0.97); }
+  .select-box {
+    background: #19161f; color: #00D8FE; font-weight: 700; border: 1px solid #3d3648;
+    border-radius: 6px; padding: 7px 12px; cursor: pointer; font-size: 13px; outline: none;
+  }
 </style>
 <script src="node_modules/p5/lib/p5.min.js"></script>
 <script src="node_modules/p5.brush/dist/p5.brush.js"></script>
@@ -26,6 +30,7 @@
 <main>
   <canvas id="out" width="1920" height="1080"></canvas>
   <div class="bar">
+    <select id="sceneSelect" class="select-box" title="Select Scene"></select>
     <button id="playBtn" class="btn">▶ Play</button>
     <input id="scrub" type="range" min="0" max="11" step="0.0417" value="0">
     <span id="tt">0.00s</span>
@@ -38,35 +43,92 @@
 <script src="src/core.js"></script>
 <script src="src/clawd.js"></script>
 <script src="src/lyrics.js"></script>
+<script src="src/kinetic.js"></script>
 <script src="src/timeline.js"></script>
 <!-- reference sheets (standalone loops) -->
 <script src="src/sheets.js"></script>
 
-<!-- Active scene: change to src/scenes/claude_pop.js for K-pop style -->
+<!-- Official base starter scenes -->
 <script src="src/scenes/demo.js"></script>
-<!-- <script src="src/scenes/claude_pop.js"></script> -->
+<script src="src/scenes/claude_pop.js"></script>
 
 <script>
   const audio = document.getElementById('bgAudio');
   const playBtn = document.getElementById('playBtn');
   const scrub = document.getElementById('scrub');
   const tt = document.getElementById('tt');
+  const sceneSelect = document.getElementById('sceneSelect');
   let isPlaying = false;
   let playStartT = 0, playStartWall = 0;
 
   function getMaxTime() {
-    return window.LOOP ? window.LOOP.len : (typeof DUR !== 'undefined' ? DUR : 11);
+    return window.LOOP ? window.LOOP.len : (window.ACTIVE_SCENE ? window.ACTIVE_SCENE.duration : (typeof DUR !== 'undefined' ? DUR : 11));
   }
 
-  function initControls() {
-    const maxT = getMaxTime();
+  function applySceneUI(scene) {
+    if (!scene) return;
+    pausePlay();
+    const maxT = scene.duration || 11;
     scrub.max = maxT;
-    if (typeof PROJECT !== 'undefined' && PROJECT.audio) {
-      audio.src = PROJECT.audio;
+    scrub.value = 0;
+    playStartT = 0;
+    if (scene.audio) {
+      audio.src = scene.audio;
+    } else {
+      audio.removeAttribute('src');
     }
     tt.textContent = `0.00s / ${maxT.toFixed(2)}s`;
+    document.title = `${scene.title || scene.id} - Clawd Studio`;
+    if (window.ready) window.renderAt(0);
   }
-  setTimeout(initControls, 200);
+
+  function initScenes() {
+    const urlParams = new URLSearchParams(location.search);
+    const customScript = urlParams.get('script') || urlParams.get('project');
+    if (customScript && !document.querySelector(`script[src="${customScript}"]`)) {
+      const s = document.createElement('script');
+      s.src = customScript;
+      s.onload = () => buildSceneUI(urlParams);
+      s.onerror = () => {
+        console.error('Failed to load custom script:', customScript);
+        buildSceneUI(urlParams);
+      };
+      document.head.appendChild(s);
+      return;
+    }
+    buildSceneUI(urlParams);
+  }
+
+  function buildSceneUI(urlParams) {
+    const requestedScene = urlParams ? urlParams.get('scene') : null;
+    sceneSelect.innerHTML = '';
+    const sceneIds = Object.keys(window.SCENES || {});
+    sceneIds.forEach(id => {
+      const s = window.SCENES[id];
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = `${s.title || id} (${s.duration || 11}s)`;
+      sceneSelect.appendChild(opt);
+    });
+
+    const activeId = requestedScene && window.SCENES[requestedScene]
+      ? requestedScene
+      : (sceneIds[sceneIds.length - 1] || 'demo');
+    if (window.loadScene) window.loadScene(activeId);
+    sceneSelect.value = activeId;
+    applySceneUI(window.ACTIVE_SCENE);
+  }
+
+  sceneSelect.addEventListener('change', () => {
+    const chosen = sceneSelect.value;
+    if (window.loadScene) {
+      window.loadScene(chosen);
+      applySceneUI(window.ACTIVE_SCENE);
+    }
+  });
+
+  window.onSceneChange = applySceneUI;
+  setTimeout(initScenes, 100);
 
   function togglePlay() {
     const maxT = getMaxTime();
@@ -79,7 +141,7 @@
       playBtn.textContent = '⏸ Pause';
       playBtn.style.background = '#ffd166';
 
-      if (audio.src) {
+      if (audio.src && audio.getAttribute('src')) {
         audio.currentTime = curT;
         audio.play().catch(e => console.log('Audio autoplay policy:', e));
       }
@@ -108,7 +170,7 @@
     if (!isPlaying) return;
     const maxT = getMaxTime();
     let curT = 0;
-    if (audio.src && !audio.paused) {
+    if (audio.src && audio.getAttribute('src') && !audio.paused) {
       curT = audio.currentTime;
     } else {
       const elapsed = (performance.now() - playStartWall) / 1000;
@@ -133,7 +195,7 @@
 
   scrub.addEventListener('input', () => {
     const t = +scrub.value;
-    if (audio.src) audio.currentTime = t;
+    if (audio.src && audio.getAttribute('src')) audio.currentTime = t;
     playStartT = t;
     playStartWall = performance.now();
     window.renderAt(t);

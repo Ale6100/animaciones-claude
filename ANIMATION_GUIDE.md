@@ -114,7 +114,7 @@ These are the classic principles of character animation, as they apply here. Mos
 
 ### 1. Storyboard
 
-Write `STORYBOARD.md` before any scene code:
+Write `STORYBOARD.md` before any scene code. Every video gets a tailored, unique storyboard adapting to the music, audio energy, and theme. When user requests are brief or open, take the initiative as creative director to elevate the concept with original visual metaphors, dynamic staging, and continuous camera flows.
 
 ```
 Logline: one sentence. Clawd wants ___, but ___, so ___.
@@ -404,10 +404,10 @@ clawd(x, y, 24, { ...feel('proud', t), aR: 1.2, armR: (u, sw) => paint(starPts(u
 
 The kit doesn't need music, but it's built for it:
 
-1. Set `bpm` to the song's tempo in [src/config.js](src/config.js), and set `offset` to the time of its first downbeat in seconds. Every idle, dance and `pulse()` then locks to the song.
-2. Put the audio in `assets/` and set `PROJECT.audio` (or pass `--audio=`). `--clip` and `--encode` mux it in.
+1. Register your scene with `bpm`, `duration`, `offset`, and `audio` using `registerScene('my_scene', { ... })`. Every idle, dance and `pulse()` then locks to the song.
+2. Put the audio in `audio/` (e.g. `audio/my_song.mp3`) or project root and reference it in the scene definition (`audio: 'audio/my_song.mp3'`) or pass `--audio=`. If the file is not found, prompt the user with the exact folder path to place it. Once export is complete, if the track was specific to that one-off video or test (unlike permanent base assets), suggest removing or archiving the file locally to maintain workspace hygiene.
 3. Land hits, cuts and takes on beats (`beatN`, `pulse`). Cut on bar lines for big changes, and give each musical phrase its own visual.
-4. **Lyrics are not text.** Don't put words on screen. Act the meaning of a line instead.
+4. **Lyrics are not text.** Don't put words on screen. Act the meaning of a line instead (unless opting into the Kinetic Typography style).
 
 ## Common failures
 
@@ -429,9 +429,31 @@ These are the things that make a Clawd video look generated. Check your storyboa
 - props floating near a hand instead of touching it
 - every shot a different world with nothing linking them
 
+## Kinetic Typography & Continuous Camera Guidelines (Lyric Videos)
+
+When creating dynamic lyric videos, the standard rules adapt to a high-velocity motion design format:
+
+1. **Continuous Camera Motion (Zero Abrupt Cuts)**:
+   - Avoid jarring or hard smash cuts between scenes unless explicitly required as a comic beat.
+   - Use continuous camera directors ([`src/kinetic.js`](src/kinetic.js)):
+     - `camPath(t, waypoints, easeFn)` for smooth multi-point camera flights through space.
+     - `camDolly(t, t0, t1, pA, pB, ...)` for seamless traveling shots.
+     - `zoomThrough(t, t0, t1, targetX, targetY)` to seamlessly dive into the center of a letter (infinite zoom) and emerge into the next environment.
+     - `camOrbit(t, cx, cy, radius, zoom, speed)` for rotational perspective sweeps.
+2. **Typography as World Geometry**:
+   - The lyrics are visual characters in the scene, not passive subtitles at the bottom.
+   - Use `wordPlatform(txt, x, y, size)` to compute physical bounds and allow Clawd to walk, hop, or dance across the words (`clawdOnWord(platform, frac, u, options)`).
+   - Use `kineticWord(txt, x, y, size, t, options)` with motion presets (`'slam'`, `'spin'`, `'flyby'`, `'orbit'`, `'float'`).
+3. **Physical Character-Text Interactions & Reactions**:
+   - Clawd should actively engage with the lyrics: standing on them, leaping between syllables, dodging flying text (`wordDodge`), or reacting with exaggerated takes (`feel('surprised')`, `take()`).
+4. **Sub-second Vocal Synchronization**:
+   - Typography entries must strictly lock to vocal onset timestamps (verified via audio transcription/Whisper). Words should never anticipate singing prematurely.
+
+---
+
 ## About the demo
 
-[src/scenes/demo.js](src/scenes/demo.js) ("The fallen star") exists to show the kit working: an acted emotion timeline, a drawn turn, a trot, a pickup, a throw on an arc, `glow`, a brush wipe and an iris in and out. **It's one idea, not a template.** Don't reuse its story, night sky, hills, star or shot structure. Start from the prompt and your own storyboard, and replace its script tag in `studio.html` with yours.
+[src/scenes/demo.js](src/scenes/demo.js) ("The fallen star") exists to show the kit working: an acted emotion timeline, a drawn turn, a trot, a pickup, a throw on an arc, `glow`, a brush wipe and an iris in and out. **It's one idea, not a template.** Don't reuse its story, night sky, hills, star or shot structure. Start from the prompt and your own storyboard, and register your scene with `registerScene` in `projects/` or `src/scenes/`.
 
 ### Worked example: how the demo times its ending
 
@@ -448,3 +470,4 @@ This shows rule 4 applied to one shot of one video. The reads, the numbers and t
 | 9.8–11.0 | iris to Clawd, hold, shut | the last read gets time to land before the video ends |
 
 The first version packed all of this into about 1.3 s, and nobody could tell what had happened.
+

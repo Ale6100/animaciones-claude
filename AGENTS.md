@@ -76,6 +76,7 @@ El proyecto lo construye un equipo con experiencia variable según el dominio. L
 - Si una decisión actual va a complicar el futuro (modelado flojo, acoplamiento innecesario, dependencias pesadas, etc.), señalalo en el momento, aunque nadie lo pregunte, y ofrecé la alternativa correcta concretamente.
 - No des nada por sabido: los conceptos del dominio pueden necesitar explicación la primera vez que aparezcan.
 - Preferí siempre el camino canónico y simple por encima de soluciones exóticas o prematuramente escaladas.
+- **Iniciativa propositiva y elevación de pedidos simples**: ante requerimientos abiertos, breves o minimalistas, no te limites a una entrega básica o plana solo por cumplir. Asumí un rol activo, enriqueciendo y profundizando la solución con criterio técnico y conceptual de calidad, aportando valor agregado y mejores alternativas sin encasillarte en fórmulas rígidas ni plantillas preconcebidas.
 
 ## Autonomía técnica: programar y ejecutar soluciones ante limitaciones
 

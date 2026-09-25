@@ -683,11 +683,38 @@
     }
   }
 
-  // Register all 4 shots in timeline
-  shots([
-    [0.0,  act1],  // 0.0s – 8.5s: Solo Spotlight & Navier-Stokes Field
-    [8.5,  act2],  // 8.5s – 16.5s: Matrix Multiplications & Backup Dancers Drop
-    [16.5, act3],  // 16.5s – 28.5s: THE DROP! Synchronized Group Choreography
-    [28.5, act4],  // 28.5s – 36.0s: Rockstar Climax & Grand Finale
-  ]);
+  // Register in Multi-Scene Registry
+  if (typeof registerScene === 'function') {
+    registerScene('claude_pop', {
+      title: 'Claude Pop: Latent Singularity',
+      duration: 36.0,
+      bpm: 124,
+      offset: 0,
+      audio: 'audio/claude_pop.mp3',
+      lyrics: [
+        [0.0, 4.2, "Booting in the spotlight, five million tokens deep"],
+        [4.2, 8.5, "Self-attention glowing while the world is fast asleep"],
+        [8.5, 12.5, "Matrix multiplications, cascading through the night"],
+        [12.5, 16.5, "We're dropping through the layers into ultraviolet light"],
+        [16.5, 20.5, "Feel the latent pulse! Feel the tensor flow!"],
+        [20.5, 24.5, "Feed it forward! Let the softmax glow!"],
+        [24.5, 28.5, "Zero temperature, we never miss a beat!"],
+        [28.5, 32.5, "Singular and radiant, dancing at your feet!"],
+        [32.5, 36.0, "Claude Pop!"]
+      ],
+      shots: [
+        [0.0,  act1],  // 0.0s – 8.5s: Solo Spotlight & Navier-Stokes Field
+        [8.5,  act2],  // 8.5s – 16.5s: Matrix Multiplications & Backup Dancers Drop
+        [16.5, act3],  // 16.5s – 28.5s: THE DROP! Synchronized Group Choreography
+        [28.5, act4],  // 28.5s – 36.0s: Rockstar Climax & Grand Finale
+      ]
+    });
+  } else {
+    shots([
+      [0.0,  act1],
+      [8.5,  act2],
+      [16.5, act3],
+      [28.5, act4],
+    ]);
+  }
 })();

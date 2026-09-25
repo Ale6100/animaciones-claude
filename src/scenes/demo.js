@@ -159,5 +159,16 @@
     }
   }
 
-  shots([[0, shotFall], [4.4, shotReturn]]);
+  if (typeof registerScene === 'function') {
+    registerScene('demo', {
+      title: 'The Fallen Star',
+      duration: 11.0,
+      bpm: 120,
+      offset: 0,
+      audio: '',
+      shots: [[0, shotFall], [4.4, shotReturn]]
+    });
+  } else {
+    shots([[0, shotFall], [4.4, shotReturn]]);
+  }
 })();

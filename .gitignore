@@ -6,22 +6,23 @@ out/
 *.mp4
 *.m4v
 
-# Generated audio files (keep the generator scripts)
+# Audio files (never commit media/commercial audio; keep generator scripts)
+*.mp3
+*.wav
+*.ogg
+*.flac
 audio/*.wav
 audio/*.mp3
 !audio/*.py
 
-# Generated / custom scenes (keep demo.js and claude_pop.js as starter templates)
-src/scenes/*
-!src/scenes/demo.js
-!src/scenes/claude_pop.js
-
-# Custom storyboards & generated previews
+# Custom ad-hoc productions & test storyboards (never commit single-video files)
+projects/
 STORYBOARD*.md
 docs/*_summary.jpg
 
-# Python cache & OS files
+# Python cache, editor & OS files
 __pycache__/
 *.pyc
+.vscode/
 .DS_Store
 Thumbs.db

@@ -1,7 +1,9 @@
 // core.js: constants, helpers, paper, paint wrapper, compositing and render hooks.
 // Length and rhythm come from PROJECT in config.js.
 const W = 1920, H = 1080;
-const BPM = PROJECT.bpm, BEAT = 60 / BPM, OFF = PROJECT.offset || 0, BOIL = 12, DUR = PROJECT.duration;
+let BPM = (typeof PROJECT !== 'undefined' && PROJECT.bpm) || 120;
+let BEAT = 60 / BPM, OFF = (typeof PROJECT !== 'undefined' && PROJECT.offset) || 0, BOIL = 12;
+let DUR = (typeof PROJECT !== 'undefined' && PROJECT.duration) || 11.0;
 const TAU = Math.PI * 2;
 const PAL = {
   paper: '#F3EBDC', ink: '#2B2233', clay: '#D97757', clayDk: '#A84D33', clayLt: '#F2A283',
@@ -308,7 +310,18 @@ function composite(t) {
   c.globalCompositeOperation = 'multiply'; c.drawImage(grainC, 0, 0);
   c.globalCompositeOperation = 'source-over';
 }
-window.renderAt = async (t, type = 'image/png', q = .92) => { T = t; await redraw(); composite(t); return outC.toDataURL(type, q); };
+window.renderAt = async (t, type = 'image/png', q = .92) => {
+  if (drawingContext && drawingContext.isContextLost && drawingContext.isContextLost()) {
+    throw new Error('WebGL context lost at t=' + t);
+  }
+  T = t;
+  await redraw();
+  if (drawingContext && drawingContext.isContextLost && drawingContext.isContextLost()) {
+    throw new Error('WebGL context lost after redraw at t=' + t);
+  }
+  composite(t);
+  return outC.toDataURL(type, q);
+};
 // Contact sheet of several times, for visual checks: returns { url, ms[] }. crop = [x, y, w, h] fills each cell with just
 // that region of the frame, at full resolution (for checking faces, hands and contacts up close).
 window.renderSheet = async (times, cols = 3, w = 640, crop = null) => {
