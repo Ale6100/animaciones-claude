@@ -216,6 +216,139 @@
     }
   };
 
+  // Lays a word out letter by letter so each letter can react on its own. Pure function of t.
+  //   o.rot: tilt of the whole word · o.wave: idle wave amplitude (px)
+  //   o.enter: seconds for the letters to arrive one after another from o.t0; o.enterStyle: 'drop' | 'pop' | 'rise'
+  //   o.hits: [{ t, x }] impacts that make the letters near x dip and spring back
+  //   o.shatter: { t, x, force } sends every letter flying on an arc · o.fade: { t, dur } fades the word out
+  // Returns the letters' positions so characters can stand on them: { letters: [{ ch, x, y, w, top }], left, right, topAt(x) }.
+  window.wordLetters = function(txt, x, y, size, t, o = {}) {
+    const ctx = outX, chars = [...txt];
+    ctx.save(); ctx.font = `${size}px "Permanent Marker", "Comic Sans MS", cursive`;
+    const widths = chars.map(ch => ctx.measureText(ch).width), total = widths.reduce((a, b) => a + b, 0);
+    ctx.restore();
+    const wr = o.rot || 0, c = Math.cos(wr), s = Math.sin(wr);
+    let cx = -total / 2;
+    const letters = chars.map((ch, i) => {
+      const w = widths[i], ox = cx + w / 2; cx += w;
+      let oy = (o.wave || 0) * Math.sin(t * 4 + i * .7), rot = wr, alpha = 1, pop = null, sx = 0;
+      if (o.enter) {
+        const k = clamp((t - (o.t0 ?? 0) - i * o.enter / chars.length) / .25), style = o.enterStyle || 'drop';
+        if (style === 'drop') { oy -= (1 - easeOut(k)) * size * 1.5; alpha *= clamp(k * 2); }
+        else if (style === 'rise') { oy += (1 - easeOut(k)) * size * .8; alpha *= k; }
+        else pop = k;
+      }
+      let lx = x + ox * c - oy * s, ly = y + ox * s + oy * c;
+      for (const h of o.hits || []) {
+        if (t < h.t) continue;
+        const near = Math.exp(-Math.pow((lx - h.x) / (size * 1.2), 2));
+        ly += near * size * .25 * Math.exp(-(t - h.t) * 7) * Math.cos((t - h.t) * 22);
+      }
+      if (o.fade && t > o.fade.t) alpha *= clamp(1 - (t - o.fade.t) / (o.fade.dur || .4));
+      if (o.shatter && t >= o.shatter.t) {
+        const q = o.shatter, a = t - q.t, dir = Math.sign(lx - q.x) || 1, f = q.force || 1;
+        const vx = dir * (300 + 600 * Math.abs(lx - q.x) / (total || 1)) * f, vy = -(500 + 200 * hash(i * 3.1)) * f;
+        lx += vx * a; ly += vy * a + 1400 * a * a; rot += dir * a * (4 + 3 * hash(i)); alpha *= clamp(1 - a / .9); sx = 1;
+      }
+      return { ch, x: lx, y: ly, w, top: sx ? -Infinity : ly - size * .42, rot, alpha, pop };
+    });
+    for (const L of letters) {
+      if (L.alpha <= .01) continue;
+      letter(L.ch, L.x, L.y, size, o.color || PAL.cream, { rot: L.rot, alpha: L.alpha, stroke: o.stroke, pop: L.pop, screen: o.screen });
+    }
+    const topAt = px => { let best = letters[0]; for (const L of letters) if (Math.abs(L.x - px) < Math.abs(best.x - px)) best = L; return best.top; };
+    return { letters, left: x - total / 2 * c, right: x + total / 2 * c, topAt, x, y, size };
+  };
+
+  // Physical lyrics: every sung word lands somewhere on screen when it is sung, in a layout that changes line by line,
+  // stays while its line is alive and leaves (shatter, fade or fall). Words are scene objects: the result lists the
+  // words on screen with their positions, so characters can stand on them, hop across them or knock them away.
+  //   lines: [{ t0, t1, words: [[t0, t1, word], ...] }] (LYRICS[id] from tools/sync_lyrics.py, or written by hand)
+  //   o: { area: [x0, y0, x1, y1], size, colors, stroke, motion: 'drop'|'pop'|'rise', exit: 'shatter'|'fade'|'fall',
+  //        maxWords (default 6: longer lines are split into phrases), hold (s after the line ends), wave, tilt, layouts: ['stairs','arc','scatter','stack'], hits: [{ t, x }],
+  //        bounce (default true: each word dips as if landed on, just after it appears),
+  //        textAt(t0) → overrides for a line starting at t0, e.g. t0 => moodAt(t0, sections).text }
+  // Splits long lines (a transcription segment can hold a whole verse) into short phrases of at most `max` words,
+  // cutting at sung pauses when there is one, so every phrase stays big and readable.
+  window.splitPhrases = function(lines, max = 6, pause = .35) {
+    const out = [];
+    for (const L of lines) {
+      if (!L.words || !L.words.length) continue;
+      let cur = [];
+      const size = Math.ceil(L.words.length / Math.ceil(L.words.length / max));   // even phrases: 7 words → 4 + 3, not 6 + 1
+      L.words.forEach((w, i) => {
+        cur.push(w);
+        const next = L.words[i + 1], gap = next ? next[0] - w[1] : Infinity;
+        if (!next || cur.length >= size || (gap > pause && cur.length >= 2)) { out.push({ t0: cur[0][0], t1: cur[cur.length - 1][1], words: cur }); cur = []; }
+      });
+    }
+    return out;
+  };
+
+  window.physicalLyrics = function(t, lines, o = {}) {
+    lines = splitPhrases(lines, o.maxWords || 6);
+    const [ax0, ay0, ax1, ay1] = o.area || [160, 140, W - 160, H - 220];
+    const onScreen = [];
+    lines.forEach((L, li) => {
+      if (!L.words || !L.words.length) return;
+      // each line keeps the style it was born with, so a mood change never restyles words already on screen
+      const q = o.textAt ? { ...o, ...o.textAt(L.words[0][0]) } : o;
+      const hold = q.hold ?? .5, exit = q.exit || 'shatter', gone = L.t1 + hold;
+      const cols = q.colors || [PAL.cream, PAL.ochre, PAL.rose], layouts = q.layouts || ['stairs', 'arc', 'scatter', 'stack'];
+      if (t < L.words[0][0] - .05 || t > gone + 1) return;
+      const n = L.words.length, layout = layouts[Math.floor(hash(li * 3.7) * layouts.length)];
+      // sizes first (longer-held words are bigger), then one scale that makes the whole phrase fit the area,
+      // then positions from the words' real widths so long words never overlap their neighbours
+      const base = q.size || 110, aw = ax1 - ax0, ah = ay1 - ay0, gapK = .35;
+      const raw = L.words.map(([a, b, word]) => base * (.8 + .6 * clamp((b - a - .2) / .6)) * (word.length <= 3 ? 1.15 : 1));
+      const width = (i, sc) => L.words[i][2].length * raw[i] * sc * .62;
+      const perRow = layout === 'stack' ? 1 : layout === 'scatter' ? 3 : n, rowsN = Math.ceil(n / perRow);
+      const rowsOf = [...Array(rowsN)].map((_, r) => [...Array(Math.min(perRow, n - r * perRow))].map((_, j) => r * perRow + j));
+      const rowW = (r, sc) => rowsOf[r].reduce((acc, i) => acc + width(i, sc) + base * sc * gapK, -base * sc * gapK);
+      const widest = Math.max(...rowsOf.map((_, r) => rowW(r, 1))), tallest = Math.max(...raw);
+      const vSpan = layout === 'stairs' || layout === 'arc' ? 1.8 : rowsN * 1.15;
+      const sc = Math.min(1, aw * .96 / widest, ah / (vSpan * tallest));
+      const place = [];
+      rowsOf.forEach((row, r) => {
+        let cx = ax0 + (aw - rowW(r, sc)) / 2;
+        for (const i of row) { const w = width(i, sc); place[i] = { cx: cx + w / 2, w }; cx += w + base * sc * gapK; }
+      });
+      L.words.forEach(([a, b, word], wi) => {
+        if (t < a - .02) return;
+        const hs = hash(li * 17 + wi * 5.3), { cx, w } = place[wi], k = (cx - ax0) / aw, row = Math.floor(wi / perRow);
+        const rowY = rowsN > 1 ? lerp(ay0 + tallest * sc * .6, ay1 - tallest * sc * .5, row / (rowsN - 1)) : (ay0 + ay1) / 2;
+        let x = cx, y;
+        if (layout === 'stairs') y = lerp(ay1 - tallest * sc * .5, ay0 + tallest * sc * .6, k);
+        else if (layout === 'arc') y = lerp(ay1 - tallest * sc * .5, ay0 + tallest * sc * .6, .25 + .75 * Math.sin(k * Math.PI));
+        else if (layout === 'stack') { x = lerp(ax0 + w / 2, ax1 - w / 2, .3 + .4 * hs); y = rowY; }
+        else y = rowY + (hs - .5) * tallest * sc * .3;
+        const size = raw[wi] * sc;
+        const rot = (q.tilt ?? .35) * (hash(li * 7 + wi * 13) - .5);
+        const lo = { rot, color: cols[(li + wi) % cols.length], stroke: q.stroke || PAL.ink, wave: q.wave || 0, enter: .18, t0: a, enterStyle: q.motion || 'drop',
+          hits: [...(q.bounce === false ? [] : [{ t: a + .2, x }]), ...(q.hits || [])] };
+        if (exit === 'shatter') lo.shatter = { t: gone + wi * .04, x: (ax0 + ax1) / 2 };
+        else if (exit === 'fade') lo.fade = { t: gone, dur: .5 };
+        const fall = exit === 'fall' && t > gone ? 1400 * Math.pow(t - gone - wi * .05, 2) * (t > gone + wi * .05 ? 1 : 0) : 0;
+        const wl = wordLetters(word, x, y + fall, size, t, lo);
+        onScreen.push({ word, t0: a, t1: b, line: li, x, y: y + fall, size, top: wl.topAt(x), wl, sung: t >= a && t < b });
+      });
+    });
+    return onScreen;
+  };
+
+  // A character hopping from word to word, landing on each one as it is sung. Returns { x, y, air, k } for the feet;
+  // spread jump-like squash yourself from `air`. Falls back to `home` when no word is on screen.
+  window.hopAcross = function(t, words, home = [W / 2, H - 200], flight = .3) {
+    const seq = words.filter(w => w.top > -1e6).sort((a, b) => a.t0 - b.t0);
+    let cur = null, prev = null;
+    for (const w of seq) { if (w.t0 <= t) { prev = cur; cur = w; } }
+    if (!cur) return { x: home[0], y: home[1], air: 0, k: 1 };
+    const land = [cur.x, cur.top], from = prev ? [prev.x, prev.top] : home, k = clamp((t - (cur.t0 - flight * .2)) / flight);
+    if (k >= 1) return { x: land[0], y: land[1], air: 0, k: 1 };
+    const [x, y] = arcPt(from, land, 90 + Math.abs(land[0] - from[0]) * .15, ease(k));
+    return { x, y, air: Math.sin(Math.PI * k), k };
+  };
+
   // Staggers an array of kinetic words across time to match rhythmic phrasing
   window.kineticPhrase = function(words, t, startT, wordDuration = 0.5, o = {}) {
     words.forEach((w, idx) => {

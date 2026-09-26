@@ -14,11 +14,11 @@ Featuring an interactive browser studio with **real-time audio playback**, a **k
    - Integrated Web Audio & HTML5 Audio in `studio.html` with Play/Pause, Spacebar toggle, and bidirectional timeline scrubbing.
    - Built-in Python music synthesizer ([`audio/generate_music.py`](audio/generate_music.py)) using `numpy` and `scipy` to produce custom 808/synthwave/funk beats, speech synthesis, and vocoder vocals.
    - Support for dropping any custom `.mp3` or `.wav` track (from Suno, Udio, YouTube, etc.).
-2. **Dynamic Karaoke Subtitles**:
-   - Timed word-by-word subtitle engine ([`src/lyrics.js`](src/lyrics.js)).
-   - Renders animated inky watercolor pills on screen and dynamically highlights each word in radiant gold (`PAL.ochre`) as the singer sings it.
+2. **Physical Lyrics**:
+   - Word-level timings from the song ([`tools/sync_lyrics.py`](tools/sync_lyrics.py)); each word lands on screen as it is sung and reacts to the characters (see *The Adaptive Music Video*).
+   - Optional karaoke pill ([`src/lyrics.js`](src/lyrics.js)) that highlights each word in gold (`PAL.ochre`) as it is sung.
 3. **Clean Generator Architecture**:
-   - `.gitignore` is pre-configured so that generated video outputs (`out/`, `*.mp4`, rendered frames), custom audio tracks, and project-specific storyboards are never committed to your repository.
+   - Each scene renders its frames into its own `out/frames/<scene>/` (resumable, so an interrupted render continues where it stopped). `.gitignore` is pre-configured so that generated video outputs (`out/`, `*.mp4`, rendered frames), custom audio tracks, and project-specific storyboards are never committed to your repository.
 
 ---
 
@@ -28,11 +28,12 @@ Featuring an interactive browser studio with **real-time audio playback**, a **k
 * [Node.js](https://nodejs.org) (v18+)
 * [Google Chrome](https://www.google.com/chrome/)
 * [FFmpeg](https://ffmpeg.org/)
-* *(Optional)* Python 3 with `numpy` and `scipy` (for procedural song generation)
+* *(Optional)* Python 3 with `numpy` (beat-grid analysis), `faster-whisper` (lyric sync) and `scipy` (procedural song generation)
 
 ### 2. Install Dependencies
 ```bash
 npm install
+pip install -r requirements.txt   # optional Python helpers (beat analysis, lyric sync, song generation)
 ```
 
 ### 3. Open the Interactive Studio
@@ -49,36 +50,30 @@ node render.mjs --sheet=0.5,2.0,5.0,10.0 --scene=demo --cols=4 --out=out/check.j
 # Render all frames in parallel using 4 headless Chrome workers:
 node render.mjs --frames --scene=claude_pop --workers=4
 
-# Encode the frames (+ audio track) into the final high-definition MP4:
-node render.mjs --encode --audio=audio/claude_pop.mp3 --out=out/my_video.mp4
+# Encode the frames into the final MP4 (uses the scene's audio track unless --audio= is given):
+node render.mjs --encode --scene=claude_pop --out=out/my_video.mp4
+
+# Check that every scene renders without page errors (exits 1 on failure):
+npm run smoke
 ```
 
 ---
 
-## 🎭 Animation Styles: Two Paradigms
+## 🎭 The Adaptive Music Video
 
-This toolkit supports two distinct creative traditions developed by the community:
+Every video follows one paradigm: the song (its energy, genre and lyrics) decides the tone section by section, and the lyrics are physical objects that fly, land and break around the scene. It merges the three styles the project grew through, keeping the best of each:
 
-### 1. The Classic Narrative Style ([John Heibel / PDoomVideo](https://github.com/JohnHeibel/PDoomVideo))
-* **Philosophy**: Intimate, character-driven storytelling with a hand-painted picture-book feel.
-* **Staging**: Solo protagonist (Clawd) exploring domestic or natural environments.
-* **Animation Rules**: Minimal to no text (`letter()` only as a rare exception), painted emoji reactions (`feel()`, `emote()`), subtle acting beats, and organic watercolor bleeding washes (`PAL.clay`, `PAL.night`).
-* **Pacing**: Deliberate, allowing each visual "read" several seconds to register.
+* **Narrative** ([John Heibel / PDoomVideo](https://github.com/JohnHeibel/PDoomVideo)): the hand-painted look, acted emotions, a story with a clear arc, and reads that get time to land.
+* **K-Pop & Kinetic Pop** ([Donald Jewkes / Claude Pop](https://x.com/donaldjewkes/status/2102801274173587569)): group choreography, concert lighting and fluid ribbons, energy locked to the beat grid ([`docs/CHOREOGRAPHY_AND_STYLES.md`](docs/CHOREOGRAPHY_AND_STYLES.md)).
+* **Kinetic Typography & Continuous Camera**: camera flights between places instead of cuts, and lyrics as scene geometry that characters stand on, dodge, pass in front of and knock apart.
 
-### 2. The K-Pop & Kinetic Pop Style ([Donald Jewkes / Claude Pop](https://x.com/donaldjewkes/status/2102801274173587569))
-* **Philosophy**: High-energy concert visuals, infectious pop hooks, and attention dynamics.
-* **Staging**: **Group choreography** featuring Clawd as the center superstar flanked by **synchronized backup dancers** (`dancer1`, `dancer2`) with distinct accessories (shades, beanies, headphones).
-* **Motion Graphics**:
-  - **Navier-Stokes fluid streamlines**: Sinusoidal ribbons representing latent space vector fields.
-  - **Dynamic concert lighting**: Swept conical spotlights (`glow()`), laser beams, floor reflections, and pyro spark fountains.
-  - **Bold kinetic typography**: Neon-bordered badges and banners popping on kick drum drops.
-* **Pacing**: Snappy camera pushes, dutch angles, and synchronized breakdowns on the beat grid.
-
-### 3. The Kinetic Typography & Continuous Camera Style
-* **Philosophy**: High-velocity lyric video where typography, character interactions, and musical rhythm are unified into a single continuous visual flow.
-* **Continuous Camera Flow**: Zero abrupt cuts. Seamless transitions via continuous traveling dollies (`camDolly`), orbital sweeps (`camOrbit`), multi-point waypoints (`camPath`), or infinite letter zoom-throughs (`zoomThrough`).
-* **Dynamic Lyrical Typography**: Lyrics animate dynamically across the entire screen in diverse sizes, rotations, and paths (`kineticWord`, `kineticPhrase`), tightly synchronized with vocal phrasing.
-* **Physical Character-Text Interaction & Reactions**: Clawd physically interacts with lyrics as platforms (`wordPlatform`, `clawdOnWord`), dodges flying text (`wordDodge`), and reacts emotionally with expressive takes and squashes.
+How it works:
+* **Moods per section**: [`src/styles.js`](src/styles.js) has mood presets (energetic, narrative, calm, epic, comedy) and blends between them, so a calm verse can ease into an explosive chorus. They are starting points: each video overrides, mixes or adds moods and invents its own transitions.
+* **Physical lyrics by default**: words appear as they are sung, spread over the frame, and react to the characters (`physicalLyrics`, `hopAcross`, `wordLetters` in [`src/kinetic.js`](src/kinetic.js)). Timings come from [`tools/sync_lyrics.py`](tools/sync_lyrics.py). The karaoke pill is still available.
+* **Literal comedy**: over casual speech, whatever is said appears the instant it is said and gets exaggerated ([`src/comedy.js`](src/comedy.js): `wordAt`, `popIn`, `snapAt`, `growAt`, `freezeAt`).
+* **The story is a surprise**: the AI improvises the story and doesn't pitch it; before building it only asks what it can't decide alone and that spoils nothing (music under a voice, length, overall energy), and builds after the answers.
+* **Invent, then keep what's reusable**: every video is free to invent characters, effects, transitions and moods, and new characters are welcome whenever the story benefits. Whatever another video could reuse is generalized into the shared code ([`src/characters.js`](src/characters.js), [`src/fx.js`](src/fx.js) and the engine files) and listed in the Library of `ANIMATION_GUIDE.md`; everything specific to one video stays in the git-ignored `projects/`.
+* **Example**: [`src/scenes/showcase.js`](src/scenes/showcase.js) sketches the paradigm in 24 s. It is one idea, not a template for how videos should look.
 
 ---
 
@@ -105,6 +100,17 @@ Creating a music video on **any topic** without cluttering the repository takes 
 
 1. **Provide the Audio Track**:
    - Place your real vocal/instrumental track in `audio/my_song.mp3` (recommended: Suno/Udio).
+   - No track, or only a voice recording? `tools/make_bed.py` builds an instrumental bed (with the voice mixed on top and the music ducking under it). Generated voices are *spoken* TTS, never sung.
+   - Measure its beat grid and sections before writing any shot, so `bpm`, `offset` and cuts land on the music:
+     ```bash
+     python tools/analyze_audio.py audio/my_song.mp3            # tempo, first downbeat, energy per bar, likely sections
+     python tools/analyze_audio.py audio/my_song.mp3 --bpm=168.5 # re-run with a known/refined tempo
+     ```
+     The tempo estimate can land a fraction of a BPM off, which drifts by whole beats over a full song: refine it with `--bpm=` until the printed phase per 20 s window stays stable across the track.
+   - Get word-level lyric timings (writes `projects/my_video.lyrics.js`; `--prompt-file=lyrics.txt` with the known lyrics improves accuracy a lot):
+     ```bash
+     python tools/sync_lyrics.py audio/my_song.mp3 --id=my_video
+     ```
 
 2. **Create a Self-Contained Scene File**:
    - Create your scene script in `projects/my_video.js` (or `src/scenes/my_video.js`). Because `projects/` is in `.gitignore`, your custom production files will never pollute the repository!
@@ -133,18 +139,18 @@ Creating a music video on **any topic** without cluttering the repository takes 
    - Core files ([`src/config.js`](src/config.js), [`src/lyrics.js`](src/lyrics.js)) and [`studio.html`](studio.html) remain untouched, keeping the base template pristine.
 
 3. **Preview & Export**:
-   - **Interactive Studio**: Open `studio.html?script=projects/my_video.js` in Chrome to review choreography and live audio with real-time scrubbing.
+   - **Interactive Studio**: Open `studio.html?script=projects/my_video.lyrics.js,projects/my_video.js` in Chrome to review choreography and live audio with real-time scrubbing (`script` takes a comma-separated list, loaded in order).
    - **Render Video**:
      ```bash
      # Render frames:
-     node render.mjs --frames --script=projects/my_video.js --scene=my_video --workers=4
+     node render.mjs --frames --script=projects/my_video.lyrics.js,projects/my_video.js --scene=my_video --workers=4
 
-     # Encode final MP4 with audio:
-     node render.mjs --encode --audio=audio/my_song.mp3 --out=out/my_video.mp4
+     # Encode final MP4 with the scene's audio:
+     node render.mjs --encode --scene=my_video --out=out/my_video.mp4
      ```
 
 ### 🎬 Storyboard y Dirección Creativa Adaptativa
-* **Storyboard dinámico a medida ([`STORYBOARD.md`](STORYBOARD.md))**: Cada producción tiene su propio guión técnico y visual. Una canción melancólica, un himno pop enérgico o una explicación conceptual seria exigen metáforas, ritmos, movimientos de cámara y paletas totalmente distintas; nunca se reutiliza una fórmula fija.
+* **Storyboard dinámico a medida** (uno por producción, en `projects/`, ignorado por git): Cada producción tiene su propio guión técnico y visual. Una canción melancólica, un himno pop enérgico o una explicación conceptual seria exigen metáforas, ritmos, movimientos de cámara y paletas totalmente distintas; nunca se reutiliza una fórmula fija.
 * **Libertad e iniciativa artística**: La IA asume rol de director creativo, proponiendo giros visuales audaces, nuevos personajes, props y mecánicas originales. Ante pedidos breves o abiertos, profundiza y eleva la propuesta con criterio cinematográfico de calidad.
 * **Autonomía sobre el audio**: Si el usuario no provee una pista, se genera el audio necesario (vía síntesis procedural en [`audio/generate_music.py`](audio/generate_music.py) o síntesis de voz) sincronizado con el guión.
 
@@ -159,12 +165,17 @@ Creating a music video on **any topic** without cluttering the repository takes 
 | [`src/timeline.js`](src/timeline.js) | Multi-scene registry (`registerScene`, `loadScene`), shot dispatcher, and dynamic karaoke painter |
 | [`src/config.js`](src/config.js) | Default starter configuration (title, duration, BPM) |
 | [`src/lyrics.js`](src/lyrics.js) | Default starter karaoke subtitles array |
-| [`src/kinetic.js`](src/kinetic.js) | Kinetic typography engine, continuous camera director, and character-text interactions |
+| [`src/kinetic.js`](src/kinetic.js) | Physical lyrics and kinetic typography, continuous camera director, and character-text interactions |
+| [`src/characters.js`](src/characters.js) | The cast beyond Clawd (Nota, Pip, Person), promoted from earlier videos |
+| [`src/comedy.js`](src/comedy.js) | Literal-comedy helpers: when a word is said, pop-ins, abrupt changes, absurd growth, freezes |
+| [`src/fx.js`](src/fx.js) | Shared library of painted backgrounds, effects and props promoted from earlier videos |
+| [`src/styles.js`](src/styles.js) | Mood presets and their per-section blending and beat-locked camera energy |
 | [`src/core.js`](src/core.js) | Watercolor engine, p5.brush setup, camera, dynamic rhythm state, and paper shaders |
 | [`src/clawd.js`](src/clawd.js) | Clawd character rig: views, limbs, emotes, eyes, and procedural kinematics |
-| [`src/scenes/`](src/scenes/) | Built-in base starter scenes (`demo.js`, `claude_pop.js`) |
+| [`src/scenes/`](src/scenes/) | Built-in example scenes (`demo.js`, `claude_pop.js`, `showcase.js`, `literal.js`) |
 | [`projects/`](projects/) | Git-ignored directory for custom user videos and song scenes |
 | [`audio/`](audio/) | Audio folder (git-ignored audio tracks) and procedural synthesis ([`generate_music.py`](audio/generate_music.py)) |
+| [`tools/`](tools/) | Helper utilities: [`analyze_audio.py`](tools/analyze_audio.py) measures a song's beat grid, energy per bar and sections (needs `ffmpeg` and `numpy`); [`sync_lyrics.py`](tools/sync_lyrics.py) transcribes word-level lyric timings (needs `faster-whisper`); [`make_bed.py`](tools/make_bed.py) builds an instrumental bed around a drop and mixes a voice over it; [`audio_envelope.py`](tools/audio_envelope.py) writes a loudness envelope for audio-reactive visuals (`envelopeAt`) |
 | [`ANIMATION_GUIDE.md`](ANIMATION_GUIDE.md) | Style guide and complete API reference |
 
 ---

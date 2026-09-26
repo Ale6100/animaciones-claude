@@ -1,6 +1,6 @@
 # Choreography & Visual Styles Reference
 
-This guide preserves the exact techniques, formulas, and helper functions discovered while bridging **John Heibel's** organic watercolor world with **Donald Jewkes'** high-energy K-pop music video paradigm.
+This guide preserves the exact techniques, formulas, and helper functions discovered while bridging **John Heibel's** organic watercolor world with **Donald Jewkes'** high-energy K-pop music video paradigm. These are ingredients of the adaptive music video (see the README): use them when a section's mood calls for them.
 
 ---
 

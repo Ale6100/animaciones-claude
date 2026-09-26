@@ -41,6 +41,22 @@ window.loadScene = function(id) {
 };
 function loadScene(id) { return window.loadScene(id); }
 
+// Word-timed lyrics (tools/sync_lyrics.py writes a script that calls this): LYRICS[id] = [{ t0, t1, words: [[t0, t1, word]] }]
+const LYRICS = window.LYRICS = {};
+window.registerLyrics = function(id, lines) { LYRICS[id] = lines; };
+
+// Loudness envelopes (tools/audio_envelope.py writes a script that calls this), for audio-reactive visuals.
+const ENVELOPES = window.ENVELOPES = {};
+window.registerEnvelope = function(id, fps, values) { ENVELOPES[id] = { fps, values }; };
+// Loudness 0..1 of envelope `id` at time t (linear between samples, 0 outside the recording).
+function envelopeAt(id, t) {
+  const e = ENVELOPES[id];
+  if (!e) throw new Error(`envelopeAt: no envelope "${id}" (load its .env.js script before the scene)`);
+  const f = t * e.fps, i = Math.floor(f);
+  if (i < 0 || i >= e.values.length - 1) return 0;
+  return lerp(e.values[i], e.values[i + 1], f - i);
+}
+
 // Standalone loops (model sheets, GIFs, tests), outside the main timeline: window.LOOP = LOOPS[name] swaps the whole
 // frame for that function, called with loop time. Give each a length: LOOPS.x = t => { ... }; LOOPS.x.len = 4;
 const LOOPS = {};
@@ -85,6 +101,24 @@ function karaoke(t) {
 function placeholder(t) {
   paint(ellPts(960, 520, 520, 300, 30, 20), { fill: PAL.sky, fillOp: 90, bleed: .3, ink: null });
   clawd(960, 820, 20, feel('happy', t));
+}
+
+// ---------- whip pan ----------
+// Horizontal speed streaks, for fast pans between places: p 0 → .5 covers the frame, .5 → 1 uncovers it; cut at p = .5.
+// Pair it with a fast camera slide in the same direction at the end of shot A and the start of shot B.
+function whip(p, dir = 1, cols = ['#4CC6DE', '#D9508C', '#5B3F9A', PAL.cream]) {
+  if (p <= 0 || p >= 1) return;
+  const n = 12, bh = H / n;
+  push(); if (dir < 0) { translate(W, 0); scale(-1, 1); }
+  for (let i = 0; i < n; i++) {
+    const d = hash(i * 4.7) * .35, y = i * bh - 10;
+    const q = p < .5 ? easeOut(clamp((p * 2 - d) / (1 - d))) : ease(clamp(((p - .5) * 2 - d) / (1 - d)));
+    const x0 = p < .5 ? -300 : lerp(-300, W + 300, q), x1 = p < .5 ? lerp(-300, W + 300, q) : W + 300;
+    if (x1 - x0 < 20) continue;
+    boilSeed('whip' + i);
+    paint([[x0, y], [x1, y + 6], [x1 + 80, y + bh / 2 + 10], [x1, y + bh + 14], [x0, y + bh + 20]], { wash: cols[i % cols.length], ink: null });
+  }
+  pop();
 }
 
 // ---------- brush wipe ----------

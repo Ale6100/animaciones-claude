@@ -12,6 +12,23 @@ Look at the model sheets first:
 
 ---
 
+## Step 0: read the song, pitch, wait
+
+Every video follows one paradigm, the **adaptive music video** (see the README): the song decides the tone, section by section, and the lyrics are physical objects in the scene.
+
+1. **Read the song.** Run `tools/analyze_audio.py` for the beat grid and the energy per bar, and `tools/sync_lyrics.py` for word timings. Listen to the genre and read the lyrics' themes. If there is no audio, generate it (see Music).
+2. **Choose moods per section.** A calm verse and an explosive chorus in the same song get different moods. `src/styles.js` has presets (energetic, narrative, calm, epic, comedy) as a starting point: override any value, mix them, invent transitions that aren't listed, and add a new mood whenever the song needs one. They are ideas, never rules.
+3. **Keep the story a surprise.** The story, the gags and the twists are yours to improvise: the person should discover them when they watch the video. Don't pitch the plot. Ask only what you can't decide for them and that doesn't spoil anything (music under a voice or not, length, overall energy, anything their audio leaves open), in a couple of short questions, with "surprise me" as a valid answer.
+4. **Wait for their answers**, then storyboard and build.
+
+**Literal comedy.** Over casual speech, a funny option is to draw exactly what is said, the instant it is said: "a ball" pops into a hand, "green" turns it green, "huge" blows it up absurdly, "far away" is a dot with an arrow. Find the moments with `wordAt(lines, 'word')` and time the gags with `src/comedy.js`; the laugh is in the snap on the word and the deadpan hold after it.
+
+**Invent.** Nothing in this kit is a limit. Create new characters whenever the story would be better with them (a friend, a rival, a creature that embodies the song), plus props, props, effects, transitions, moods, layouts for the lyrics, ways for the camera to move. If an idea needs something the engine can't do yet, program it. Surprise the viewer.
+
+**Reuse, then promote.** Before painting something, check the Library below and the engine. After the video, anything you invented that another video could use (a character, a background, an effect, a prop, a transition, a lyrics behaviour, a mood) gets generalized (colours and sizes as parameters, nothing tied to this song) and moved into the shared code: `src/characters.js` for characters, `src/fx.js` for painted pieces, `src/kinetic.js` for text and camera, `src/styles.js` for moods, `src/timeline.js` for transitions. Add a one-line entry to the Library. What belongs only to one video (its scene, story, storyboard, audio, lyrics) stays in the git-ignored `projects/`.
+
+The goals and rules below apply to every mood; where a rule depends on the mood, it says so.
+
 ## The three goals
 
 Every rule below serves one of three goals.
@@ -32,7 +49,9 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 - **Light is the one exception.** p5.brush mixes colour like pigment, so a yellow glow painted over blue turns green, and a thin wash over it turns grey. Use `glow()` for anything that shines: it adds real light, under the paper grain.
 - **Soft palette, no pure black or white.** Use `PAL.ink` for black and `PAL.cream` or `PAL.paper` for white. Keep colours soft and harmonious, and keep Clawd clearly readable against the background.
 
-### 2. No text
+### 2. No text, except the lyrics
+
+*The lyrics are the one text layer, on by default: physical words spread over the scene (see "Physical Lyrics & Continuous Camera"). Everything below is about any other text.*
 
 - **Show it, don't write it.** Models overuse text. No captions, no titles, no labels on objects, no signs, no speech bubbles with words, no words on screens, no "ZZZ" typed in a font.
 - **Clawd's reactions are painted marks, never letters**: `!`, `?`, zzz, sweat, hearts, a bulb, a rain cloud. Use the emotes (see the reference).
@@ -52,6 +71,7 @@ Timing turns a set of drawings into a story. It's also where generated animation
 
 You know what happens because you wrote the code. The viewer doesn't: they see it once, at full speed, for the first time. **For every moment, ask what the viewer needs to understand and how long that will take them, and time it for that.**
 
+- **Energy sections.** In energetic moods the beat sets the pace (a cut, camera punch or new move every 1–2 bars, every 2 beats in a chorus). The rules below still hold for the story reads inside them: a key moment still needs time to land.
 - **Write the reads.** For each shot, list in order what the viewer has to understand. Each item is a *read*. Every read needs time for the eye to find it, time to understand it, and a moment to register before the next thing starts. Small, distant, fast or subtle things take longer to find and understand than big, central, obvious ones.
 - **One read at a time.** Don't start a new read while the viewer is still taking in the last one. When two things happen at once, the viewer sees only one of them. Put a cause and its reaction in sequence, not on top of each other.
 - **Fast actions, slow meanings.** A motion can be very quick if it's anticipated, but what it means needs held time. Anticipation tells the viewer where to look before the action, and the hold after it lets them understand it. Move quickly through what doesn't matter to the story, and spend time on what does. That contrast between quick and held is what gives a film rhythm; one constant speed, fast or slow, makes it flat and hard to follow.
@@ -84,7 +104,7 @@ For a worked example, see how the demo times its ending, at the end of this guid
 
 ### 7. One piece: a vision before any code
 
-- **Storyboard first**, in writing, before you write any scene code (the workflow below has the format). If you're working with a person, show them the storyboard and let them react before you build.
+- **Storyboard first**, in writing, before you write any scene code (the workflow below has the format). The storyboard is your working plan and stays private: the person discovers the story in the video (Step 0).
 - **One world.** Pick a palette and a setting that carries through, with a colour arc across the video (e.g. cold night → warm dawn as Clawd's mood lifts).
 - **One thread.** The story has a beginning, a middle and an end, and Clawd's emotional arc follows it. Plan the emotion keys across the whole video, not per shot.
 - **Rhyme the ending with the opening:** the same place, pose or motif, changed. It makes the film feel whole.
@@ -142,8 +162,7 @@ Check the storyboard against the rules:
 
 ### 2. Build
 
-- Set `duration` (and `bpm`) in [src/config.js](src/config.js).
-- Put your scene in a new file (e.g. `src/scenes/my_video.js`), wrapped in an IIFE, and end it with `shots([...])`. In [studio.html](studio.html), **replace** the `demo.js` script tag with yours.
+- Put your scene in `projects/my_video.js` (git-ignored), wrapped in an IIFE, and register it with `registerScene('my_video', { duration, bpm, offset, audio, shots })` (see the README). Open it with `studio.html?script=projects/my_video.js` (add the lyrics script first, comma-separated).
 - Build and check one shot at a time, in order.
 - Within a shot, block the key poses first and check them as stills (`--sheet` at the key times). Add the motion between them once they read.
 
@@ -162,11 +181,13 @@ Check the storyboard against the rules:
     if (lt < .45) iris(...at, lerp(0, 1500, easeIn(lt / .45)));            // transition in
     if (lt > dur - .3) brushWipe((lt - (dur - .3)) / .6);                 // transition out (next shot finishes it)
   }
-  shots([[0, park] /*, [3.5, nextShot], ... */]);
+  registerScene('my_video', { duration: 11, bpm: 120, shots: [[0, park] /*, [3.5, nextShot], ... */] });
 })();
 ```
 
 ### 3. Look at it: the review loop
+
+First, `npm run smoke` (add `-- --script=projects/my_video.js` for your scene): every scene renders three frames and any page error fails it. Then look at the frames themselves:
 
 You can't see motion by reading code. Render and look at every shot, several times, at three zoom levels:
 
@@ -201,10 +222,45 @@ Fix what you find, then look again. **Budget:** at least one sheet per shot, a s
 ```bash
 node render.mjs --clip --out=out/video.mp4                      # the whole video, straight to MP4
 node render.mjs --frames --workers=4                            # or: parallel + resumable JPEG frames into out/frames …
-node render.mjs --encode --out=out/video.mp4                    # … then encode them
+node render.mjs --encode --scene=my_video --out=out/video.mp4   # … then encode them (frames live in out/frames/<scene>/)
 ```
 
 ---
+
+## Characters
+
+| character | file | notes |
+|---|---|---|
+| Clawd | `src/clawd.js` | the lead: views, 31 emotions, dances, hats, emotes (full reference in the Clawd section) |
+| Nota | `src/characters.js` | a living spark: soft four-point star with a face. `nota(x, y, r, t, {mood, glow, s})`; `glow` is its life (dims to grey), moods happy, love, surprised, sad, scared, sleepy |
+| Pip | `src/characters.js` | a round ink-blob with a glowing antenna. `pip(x, y, u, t, {sq, rot, open, col})` |
+| Person | `src/characters.js` | a generic everyday human to cast as "me", "a person", "my neighbour". `person(x, y, u, t, {aL, aR, walk, mood, col})`; returns `{handL, handR}` so props sit in its hands |
+
+## Library
+
+Painted pieces promoted from earlier videos, in `src/fx.js` (options go in a trailing object):
+
+| piece | what it paints |
+|---|---|
+| `skyBands(cols, y0, y1)` | a banded painted sky that covers zoomed-out cameras |
+| `synthSun(x, y, r, t, {top, bottom, stripe})` | a striped retro sun |
+| `starField(t, n, {y1})` | twinkling stars at stable positions |
+| `skyline(scroll, baseY, {col, win, S, hMin, hMax, depth})` | a scrolling row of buildings with lit windows (parallax) |
+| `gridFloor(hy, t, speed, {line, floor})` | a retro grid floor rushing toward the viewer |
+| `ridge(baseY, amp, col, {rim, scroll})` | a soft mountain ridge |
+| `cloud(x, y, s, col, {watercolour})` | a three-puff cloud (flat washes when `watercolour: false`, much cheaper) |
+| `tunnelRings(t, cx, cy, phase, Rm)` | a light tunnel; grow `Rm` to fly into it |
+| `speechBubblePts(cx, cy, r, tail)` | a speech-bubble outline; with `irisShape` it reveals another world inside the bubble |
+| `spark(x, y, r, t, {col, lite})` and `trail(posAt, t, n, dt, r, col)` | a glowing spark and a comet trail behind anything that moves |
+| `burst(x, y, age, r, col)` | a firework or impact burst |
+| `confetti(t, n, cols)` and `beams(t, cols)` | falling confetti; sweeping stage lights |
+| `ball(x, y, r, col)` | a painted ball |
+| `synthKeys(x, y, w, {lit})` | a small synth keyboard whose keys light up; returns key positions |
+| `hoverboard(x, y, w, rot, t)` | a hover deck with a beat-pulsing thruster |
+
+Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `physicalLyrics()`, `hopAcross()`, `wordLetters()` and the camera directors (`src/kinetic.js`); `MOODS`, `moodAt()`, `beatCam()` (beat kicks, shake, and a new framing every `pace` bars) and `moodTime()` (drawings on twos when the mood asks for it) in `src/styles.js`.
+
+**Render cost:** watercolour `fill`s and `glow()`s are what make frames slow. Big flat areas (skies, floors) render fast with `wash`; keep fills for the few shapes that show the texture, and use `spark(..., {lite: true})` when dozens are on screen.
 
 ## Engine
 
@@ -216,6 +272,13 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 | `src/core.js` | canvas, palette, timing and motion helpers, `paint()`, camera, full-frame effects, `glow()`, lettering, paper, render hooks |
 | `src/clawd.js` | Clawd: views, emotions, eyes, mouths, hats, emotes, moves |
 | `src/timeline.js` | `shots()`, `LOOPS`, `brushWipe()` |
+| `src/kinetic.js` | camera directors (`camPath`, `camDolly`, `camOrbit`, `zoomThrough`) and physical lyrics (`physicalLyrics`, `hopAcross`, `wordLetters`, `kineticWord`, `wordPlatform`, `wordDodge`) |
+| `src/characters.js` | the cast beyond Clawd (see Characters) |
+| `src/fx.js` | the Library: promoted backgrounds, effects and props |
+| `src/comedy.js` | literal comedy: `wordAt()` (when a word is said), `popIn()`, `snapAt()`, `growAt()`, `freezeAt()` |
+| `src/scenes/literal.js` | an 8-second sketch of literal comedy (a person, a ball that turns green and grows absurdly). One idea, not a template |
+| `src/styles.js` | mood presets (`MOODS`), `moodAt()` for moods per section, `beatCam()` for beat-locked camera energy |
+| `src/scenes/showcase.js` | a 24-second sketch of the paradigm (calm → energetic → calm in one continuous shot, physical lyrics). One idea, not a template |
 | `src/sheets.js` | the model sheets as loops (`?loop=emotions`, `?loop=views`) |
 | `src/scenes/demo.js` | an 11-second example. **Don't copy it** (see the end of this guide) |
 | `studio.html` | open it in Chrome to scrub the video (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
@@ -291,7 +354,7 @@ node render.mjs --encode --out=out/video.mp4                    # … then encod
 - **Lettering** (only if you must, see "No text"):
   - `letter(txt, x, y, size, colour, {pop, rot, alpha, screen})`
   - `sfx(txt, x, y, size, colour, age)`
-  - Both are composited at `flushLetters()`, after the shot. If a wipe or iris must cover them, call it yourself first.
+  - Both are composited at `flushLetters()`, after the shot, so by default text sits on top of everything. Calling `flushLetters()` mid-shot paints the text queued so far into the frame, and whatever is drawn afterwards covers it: use it to put a character in front of a word, or a wipe or iris over the text.
 
 ---
 
@@ -407,7 +470,9 @@ The kit doesn't need music, but it's built for it:
 1. Register your scene with `bpm`, `duration`, `offset`, and `audio` using `registerScene('my_scene', { ... })`. Every idle, dance and `pulse()` then locks to the song.
 2. Put the audio in `audio/` (e.g. `audio/my_song.mp3`) or project root and reference it in the scene definition (`audio: 'audio/my_song.mp3'`) or pass `--audio=`. If the file is not found, prompt the user with the exact folder path to place it. Once export is complete, if the track was specific to that one-off video or test (unlike permanent base assets), suggest removing or archiving the file locally to maintain workspace hygiene.
 3. Land hits, cuts and takes on beats (`beatN`, `pulse`). Cut on bar lines for big changes, and give each musical phrase its own visual.
-4. **Lyrics are not text.** Don't put words on screen. Act the meaning of a line instead (unless opting into the Kinetic Typography style).
+4. **Lyrics are physical.** Sync them with `tools/sync_lyrics.py` and load the generated script with the scene (`studio.html?script=projects/x.lyrics.js,projects/x.js`, same for `render.mjs --script=`). Act the meaning of a line too, not just its words.
+5. **No audio, or only a voice?** `tools/make_bed.py` builds an instrumental bed around a moment (intro, build-up, drop at a chosen second, fade) and, given a voice, mixes it on top and ducks the music while it talks. `audio/generate_music.py` makes a fixed demo song and *spoken* voice (TTS), never singing; for a sung song, suggest Suno, Udio or ElevenLabs Music.
+6. **Audio-reactive visuals**: `tools/audio_envelope.py` writes a loudness envelope script; `envelopeAt(id, t)` returns 0..1, for waveforms, mouths that move while someone talks, things that pulse with a voice.
 
 ## Common failures
 
@@ -429,23 +494,25 @@ These are the things that make a Clawd video look generated. Check your storyboa
 - props floating near a hand instead of touching it
 - every shot a different world with nothing linking them
 
-## Kinetic Typography & Continuous Camera Guidelines (Lyric Videos)
+## Physical Lyrics & Continuous Camera
 
-When creating dynamic lyric videos, the standard rules adapt to a high-velocity motion design format:
+How the lyrics and the camera behave by default. Adapt all of it to the mood of each section.
 
-1. **Continuous Camera Motion (Zero Abrupt Cuts)**:
-   - Avoid jarring or hard smash cuts between scenes unless explicitly required as a comic beat.
+1. **Continuous camera** (the default for energetic sections; any transition is valid when it serves the moment):
+   - Carry the camera from one place to the next instead of cutting.
    - Use continuous camera directors ([`src/kinetic.js`](src/kinetic.js)):
      - `camPath(t, waypoints, easeFn)` for smooth multi-point camera flights through space.
      - `camDolly(t, t0, t1, pA, pB, ...)` for seamless traveling shots.
      - `zoomThrough(t, t0, t1, targetX, targetY)` to seamlessly dive into the center of a letter (infinite zoom) and emerge into the next environment.
      - `camOrbit(t, cx, cy, radius, zoom, speed)` for rotational perspective sweeps.
 2. **Typography as World Geometry**:
-   - The lyrics are visual characters in the scene, not passive subtitles at the bottom.
+   - The lyrics are visual characters in the scene, not passive subtitles at the bottom. `physicalLyrics(t, lines, o)` places every word when it is sung, spread over the frame with a layout that changes line by line, and returns where each word is. Long lines (transcriptions often group a whole verse) are split into phrases of up to `maxWords` (default 6) at the sung pauses, so words stay big. `hopAcross(t, words)` makes a character land on each word as it is sung. With moods per section, pass `textAt: t0 => moodAt(t0, sections).text` so each line keeps the style of the mood it started in (words already on screen never restyle mid-flight). The karaoke pill (`lyrics` in the scene) remains as an option.
    - Use `wordPlatform(txt, x, y, size)` to compute physical bounds and allow Clawd to walk, hop, or dance across the words (`clawdOnWord(platform, frac, u, options)`).
    - Use `kineticWord(txt, x, y, size, t, options)` with motion presets (`'slam'`, `'spin'`, `'flyby'`, `'orbit'`, `'float'`).
 3. **Physical Character-Text Interactions & Reactions**:
    - Clawd should actively engage with the lyrics: standing on them, leaping between syllables, dodging flying text (`wordDodge`), or reacting with exaggerated takes (`feel('surprised')`, `take()`).
+   - `wordLetters(txt, x, y, size, t, o)` animates each letter on its own: letters that drop in one by one (`enter`), dip and spring back where a character lands (`hits`), or fly apart from an impact (`shatter`). It returns each letter's top, so a character can stand on the word and ride the dip.
+   - Depth: words are drawn over everything unless you call `flushLetters()` before drawing what should pass in front of them (see Lettering in the Engine section).
 4. **Sub-second Vocal Synchronization**:
    - Typography entries must strictly lock to vocal onset timestamps (verified via audio transcription/Whisper). Words should never anticipate singing prematurely.
 

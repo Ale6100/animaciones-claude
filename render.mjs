@@ -7,10 +7,11 @@
 //     node render.mjs --stills=1.2,3.4 --out=out/stills                                     full-res PNGs
 //   Make the video:
 //     node render.mjs --clip [--range=0:4] --out=out/video.mp4                               straight to MP4 (one worker)
-//     node render.mjs --frames [--range=0:8] --workers=4                                     JPEG frames → out/frames (parallel, resumable)
-//     node render.mjs --encode --out=out/video.mp4                                           out/frames → MP4
+//     node render.mjs --frames [--range=0:8] --workers=4                                     JPEG frames → out/frames/<scene> (parallel, resumable)
+//     node render.mjs --encode --out=out/video.mp4                                           out/frames/<scene> → MP4 (pass the same --scene)
 //   Standalone loops (LOOPS in the page): add --loop=<name> to any of the above (times are then loop times), or
 //     node render.mjs --loop=emotions --png --out=out/loop_emotions                          one cycle as PNGs (for GIFs)
+//   Check: node render.mjs --smoke [--script=projects/x.js]     every scene renders without page errors (exit 1 otherwise)
 //   Music: --audio=assets/song.mp3 (or PROJECT.audio) is muxed into --clip and --encode. Other flags: --fps=24,
 //   --chrome=<path to Chrome/Chromium>.
 import puppeteer from 'puppeteer-core';
@@ -24,7 +25,7 @@ const CHROMES = [args.chrome, process.env.CHROME_PATH, 'C:/Program Files/Google/
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'];
 const CHROME = CHROMES.find(p => p && existsSync(p));
 if (!CHROME) { console.error('Chrome not found: pass --chrome=<path> or set CHROME_PATH'); process.exit(1); }
-const fps = +(args.fps || 24), FRAMES_DIR = 'out/frames';
+const fps = +(args.fps || 24), FRAMES_DIR = `out/frames/${args.scene || 'default'}`;
 const run = (cmd, a) => new Promise((ok, bad) => { const p = spawn(cmd, a, { stdio: 'inherit' }); p.on('close', c => c ? bad(new Error(cmd + ' exited ' + c)) : ok()); });
 const times = s => String(s).split(',').map(Number);
 const span = s => String(s).split(':').map(Number);
@@ -32,6 +33,11 @@ const span = s => String(s).split(':').map(Number);
 if (args.encode) {
   const out = args.out || 'out/video.mp4', n = readdirSync(FRAMES_DIR).filter(f => f.endsWith('.jpg')).length;
   let audio = args.audio;
+  const sceneMeta = `${FRAMES_DIR}/scene.json`;
+  if (!audio && existsSync(sceneMeta)) {
+    const { audio: a } = JSON.parse(readFileSync(sceneMeta, 'utf8'));
+    if (a && existsSync(a)) audio = a;
+  }
   if (!audio) {
     try {
       const cfg = readFileSync('src/config.js', 'utf8');
@@ -52,13 +58,20 @@ const browser = await puppeteer.launch({
   executablePath: CHROME, headless: true, protocolTimeout: 0,
   args: ['--allow-file-access-from-files', '--ignore-gpu-blocklist', ...gpu, '--enable-gpu-rasterization', '--window-size=1920,1080', '--disable-renderer-backgrounding', '--disable-background-timer-throttling']
 });
+// p5.brush logs these WebGL warnings once per page in some scenes; they are harmless (see ANIMATION_GUIDE.md)
+const HARMLESS = /WebGL: INVALID_OPERATION: .* location is not from the associated program/;
+let pageErrors = 0;
 async function openPage(tag = '') {
   const page = await browser.newPage();
-  page.on('console', m => { if (['error', 'warn'].includes(m.type())) console.log(`[page${tag}]`, m.text()); });
-  page.on('pageerror', e => console.log(`[page error${tag}]`, e.message));
+  page.on('console', m => {
+    if (!['error', 'warn'].includes(m.type()) || HARMLESS.test(m.text())) return;
+    if (m.type() === 'error') pageErrors++;
+    console.log(`[page${tag}]`, m.text());
+  });
+  page.on('pageerror', e => { pageErrors++; console.log(`[page error${tag}]`, e.message); });
   const sceneParam = args.scene ? `&scene=${encodeURIComponent(args.scene)}` : '';
   const scriptParam = args.script ? `&script=${encodeURIComponent(args.script)}` : (args.project ? `&script=${encodeURIComponent(args.project)}` : '');
-  await page.goto(pathToFileURL(resolve('studio.html')).href + '?render' + sceneParam + scriptParam, { waitUntil: 'networkidle0' });
+  await page.goto(pathToFileURL(resolve('studio.html')).href + '?render' + sceneParam + scriptParam, { waitUntil: 'networkidle0', timeout: 120000 });
   await page.waitForFunction('window.ready === true', { timeout: 60000 });
   if (args.loop) {
     const ok = await page.evaluate(name => { if (!LOOPS[name]) return false; window.LOOP = LOOPS[name]; return true; }, args.loop);
@@ -103,9 +116,13 @@ if (args.sheet || args.strip) {
   console.log(`${n} frames → ${out}  (${((Date.now() - start) / n).toFixed(0)} ms/frame)`);
 } else if (args.frames) {
   // Parallel and resumable: each worker pulls the next missing frame; files are written atomically.
-  const probe = await openPage(), len = await lengthOf(probe); await probe.close();
+  const probe = await openPage(), len = await lengthOf(probe);
+  // --encode runs without a page, so it reads the scene's audio track from here
+  const sceneAudio = await probe.evaluate(() => (window.ACTIVE_SCENE && window.ACTIVE_SCENE.audio) || '');
+  await probe.close();
   const [a, b] = args.range ? span(args.range) : [0, len], workers = +(args.workers || 4);
   mkdirSync(FRAMES_DIR, { recursive: true });
+  writeFileSync(`${FRAMES_DIR}/scene.json`, JSON.stringify({ audio: sceneAudio }));
   const first = Math.round(a * fps), last = Math.min(Math.ceil(len * fps) - 1, Math.round(b * fps) - 1);
   const todo = []; for (let i = first; i <= last; i++) { const f = `${FRAMES_DIR}/f${String(i).padStart(5, '0')}.jpg`; if (!existsSync(f) || statSync(f).size < 1000) todo.push(i); }
   console.log(`${todo.length} frames to render (${last - first + 1 - todo.length} already done), ${workers} workers`);
@@ -156,6 +173,19 @@ if (args.sheet || args.strip) {
   }
   ff.stdin.end(); await new Promise(r => ff.on('close', r));
   console.log(`wrote ${out}`);
+} else if (args.smoke) {
+  // Every registered scene (plus --script ones) renders three frames without page errors, or the process exits 1.
+  const page = await openPage(), ids = await page.evaluate(() => Object.keys(window.SCENES));
+  for (const id of ids) {
+    const before = pageErrors, t0 = Date.now();
+    try {
+      const len = await page.evaluate(id => { window.loadScene(id); return window.ACTIVE_SCENE.duration; }, id);
+      for (const k of [.1, .5, .9]) await page.evaluate(t => window.renderAt(t, 'image/jpeg', .5), len * k);
+    } catch (err) { pageErrors++; console.log(`[${id}]`, err.message.split(String.fromCharCode(10))[0]); }
+    console.log(`${pageErrors > before ? 'FAIL' : 'ok  '}  ${id}  (${((Date.now() - t0) / 3).toFixed(0)} ms/frame)`);
+  }
+  await browser.close();
+  process.exit(pageErrors ? 1 : 0);
 } else {
   console.log('nothing to do: see the usage notes at the top of render.mjs');
 }

@@ -42,8 +42,12 @@
 <script src="src/config.js"></script>
 <script src="src/core.js"></script>
 <script src="src/clawd.js"></script>
+<script src="src/characters.js"></script>
 <script src="src/lyrics.js"></script>
 <script src="src/kinetic.js"></script>
+<script src="src/styles.js"></script>
+<script src="src/fx.js"></script>
+<script src="src/comedy.js"></script>
 <script src="src/timeline.js"></script>
 <!-- reference sheets (standalone loops) -->
 <script src="src/sheets.js"></script>
@@ -51,6 +55,8 @@
 <!-- Official base starter scenes -->
 <script src="src/scenes/demo.js"></script>
 <script src="src/scenes/claude_pop.js"></script>
+<script src="src/scenes/showcase.js"></script>
+<script src="src/scenes/literal.js"></script>
 
 <script>
   const audio = document.getElementById('bgAudio');
@@ -84,19 +90,19 @@
 
   function initScenes() {
     const urlParams = new URLSearchParams(location.search);
-    const customScript = urlParams.get('script') || urlParams.get('project');
-    if (customScript && !document.querySelector(`script[src="${customScript}"]`)) {
-      const s = document.createElement('script');
-      s.src = customScript;
-      s.onload = () => buildSceneUI(urlParams);
-      s.onerror = () => {
-        console.error('Failed to load custom script:', customScript);
-        buildSceneUI(urlParams);
-      };
-      document.head.appendChild(s);
-      return;
-    }
-    buildSceneUI(urlParams);
+    const customScripts = (urlParams.get('script') || urlParams.get('project') || '').split(',').filter(Boolean)
+      .filter(src => !document.querySelector(`script[src="${src}"]`));
+    loadScriptsInOrder(customScripts, () => buildSceneUI(urlParams));
+  }
+
+  // Loads each script after the previous one, so a lyrics file registers before the scene that uses it.
+  function loadScriptsInOrder(srcs, done) {
+    if (!srcs.length) return done();
+    const [src, ...rest] = srcs, s = document.createElement('script');
+    s.src = src;
+    s.onload = () => loadScriptsInOrder(rest, done);
+    s.onerror = () => { console.error('Failed to load custom script:', src); loadScriptsInOrder(rest, done); };
+    document.head.appendChild(s);
   }
 
   function buildSceneUI(urlParams) {
