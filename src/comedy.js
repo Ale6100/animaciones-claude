@@ -13,6 +13,17 @@ function wordAt(lines, text, nth = 0) {
   return null;
 }
 
+// Details that answer the song: each cue appears when its word is sung (or at a time), stays `hold` seconds and leaves.
+// list: [{ at: 'word' | seconds, nth, hold = 2, draw: (k, age) => { ... } }]; k is the popIn scale (overshoots, then 1).
+function cues(t, lines, list) {
+  for (const c of list) {
+    const t0 = typeof c.at === 'number' ? c.at : wordAt(lines, c.at, c.nth || 0);
+    if (t0 == null || t < t0) continue;
+    const k = popIn(t, t0, t0 + (c.hold ?? 2));
+    if (k > .01) c.draw(k, t - t0);
+  }
+}
+
 // 0..1+ scale for something that pops in at t0 (a quick overshoot) and optionally pops out at t1.
 function popIn(t, t0, t1 = Infinity, dur = .18) {
   if (t0 == null || t < t0) return 0;

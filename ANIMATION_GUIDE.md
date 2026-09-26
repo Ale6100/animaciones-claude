@@ -1,10 +1,14 @@
 # Animating Clawd
 
-Read this whole file before you draw anything. It covers how to make a short, hand-painted cartoon, starring Clawd or any character you design: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
+Read this whole file before you draw anything. It covers how to make a short cartoon (hand-painted watercolor by default, or any other look), starring Clawd, any character you design, or no character at all: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
 
-The person prompting you decides **what** the video is about. This guide decides **how** it's made. If they ask for something the rules below forbid (a caption, a 3D spin), do what they ask.
+The person prompting you decides **what** the video is about. This guide decides **how** it's made. If they ask for something the rules below forbid (a caption, say), do what they ask.
+
+**Nothing is a hard limit, and no label is a cage.** Looks, styles, moods, techniques, 2D and 3D, the presets and the helpers of this kit are all ingredients: mix them, bend them or replace them whenever the video gains from it, within a shot or across the video. A request for a style ("watercolor", "calm", "K-pop") tells you what the person is after; if the song and the context call for something else or a blend, go for it, and tell them what you chose and why. The one thing that never bends is the viewer: whatever you mix has to read, feel intended and serve the song.
 
 **No design here is final.** Clawd, the emotions, the props and the helpers are a starting point, not a limit. Change any of them, Clawd's own design included, and add whatever new characters, props or emotions the idea needs. Paint new things with the same tools and rules, so they belong with the rest.
+
+**Characters are optional.** A video can have a lead, an ensemble, or no characters at all: kinetic typography, abstract shapes, objects, places, a journey of the camera. Decide it per video, from the song. Where the rules below talk about Clawd or a character, apply them to whatever carries the video: a shot's event can be a shape transforming or a word breaking apart, "alive" means the frame keeps moving, and the emotional arc can live in the colour, the energy or the camera.
 
 Look at the model sheets first:
 - [docs/emotions.jpg](docs/emotions.jpg): all 31 emotions.
@@ -17,9 +21,10 @@ Look at the model sheets first:
 Every video follows one paradigm, the **adaptive music video** (see the README): the song decides the tone, section by section, and the lyrics are physical objects in the scene.
 
 1. **Read the song.** Run `tools/analyze_audio.py` for the beat grid and the energy per bar, and `tools/sync_lyrics.py` for word timings. Listen to the genre and read the lyrics' themes. If there is no audio, generate it (see Music).
-2. **Choose moods per section.** A calm verse and an explosive chorus in the same song get different moods. `src/styles.js` has presets (energetic, narrative, calm, epic, comedy) as a starting point: override any value, mix them, invent transitions that aren't listed, and add a new mood whenever the song needs one. They are ideas, never rules.
-3. **Keep the story a surprise.** The story, the gags and the twists are yours to improvise: the person should discover them when they watch the video. Don't pitch the plot. Ask only what you can't decide for them and that doesn't spoil anything (music under a voice or not, length, overall energy, anything their audio leaves open), in a couple of short questions, with "surprise me" as a valid answer.
-4. **Wait for their answers**, then storyboard and build.
+2. **Mine the references.** Before any story, build a reference bank from the song (rule 8): for each section, what the lyrics name, the culture they come from (its jargon, famous objects, history, memes, in-jokes) and the visual puns hidden in the words.
+3. **Choose moods per section.** A calm verse and an explosive chorus in the same song get different moods. `src/styles.js` has presets (energetic, narrative, calm, epic, comedy) as a starting point: override any value, mix them, invent transitions that aren't listed, and add a new mood whenever the song needs one. They are ideas, never rules.
+4. **Keep the story a surprise.** The story, the gags and the twists are yours to improvise: the person should discover them when they watch the video. Don't pitch the plot. Ask only what you can't decide for them and that doesn't spoil anything (music under a voice or not, length, overall energy, anything their audio leaves open), in a couple of short questions, with "surprise me" as a valid answer. Look, style and technique are never questions: they're yours to decide (and to mix).
+5. **Wait for their answers**, then storyboard and build.
 
 **Literal comedy.** Over casual speech, a funny option is to draw exactly what is said, the instant it is said: "a ball" pops into a hand, "green" turns it green, "huge" blows it up absurdly, "far away" is a dot with an arrow. Find the moments with `wordAt(lines, 'word')` and time the gags with `src/comedy.js`; the laugh is in the snap on the word and the deadpan hold after it.
 
@@ -33,19 +38,21 @@ The goals and rules below apply to every mood; where a rule depends on the mood,
 
 Every rule below serves one of three goals.
 
-- **Handmade.** The video should look like someone painted it by hand, frame by frame. That means brush strokes, ink lines that boil, flat 2D and no lettering.
-- **Alive.** Something is always moving and something is always happening. Faces act instead of snapping, and characters are big enough to feel.
+- **Handmade.** The video should look drawn by hand, frame by frame, in a medium that feels intended (one look or a deliberate mix): in the watercolor look, brush strokes and ink lines that boil; in any look, no lettering.
+- **Alive.** Something is always moving and something is always happening. Faces act instead of snapping, characters are big enough to feel, and the world is full of details to discover.
 - **One piece.** It's one short film, not a pile of clips. Plan it before you draw it, and link every scene to the next.
 
 Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is the rule models get wrong most often.
 
 ## The rules
 
-### 1. The medium is solid: brush strokes, flat 2D, boil
+### 1. The medium is solid: one look, boil, depth that serves the video
 
-- **Paint everything with p5.brush through `paint()` and `inkLine()`.** Characters get flat `wash` colour plus an ink outline. Backgrounds get soft watercolour `fill` shapes, usually with no outline or a thin one. Never use plain p5 shapes (`rect`, `ellipse`, `fill()`): they look like 2000s Flash.
+- **Pick the look first.** Watercolor is the default, not the only option: `look` in `registerScene` switches how every `paint()`, `inkLine()`, paper and grain render (see Looks in the Engine section), and a video can add its own look. Choose what serves the song. One coherent look is the simple default; mixing is just as valid when it helps: a section in another look, one element drawn in a different one (`withLook()`), 2D characters over a 3D world, a look invented for this video.
+- **Draw everything through `paint()` and `inkLine()`,** so the look applies to all of it. Characters get flat `wash` colour plus an ink outline. Backgrounds get soft `fill` shapes, usually with no outline or a thin one. Never call p5 shapes (`rect`, `ellipse`, `fill()`) directly: they skip the look, and in watercolor they read as 2000s Flash.
+- **Finish every drawing.** A prop or a set is not done at one outlined shape: give it secondary shapes (panels, seams, buttons, marks), light and shade (a highlight and a darker side), wear or texture, and a little secondary motion. The focal pieces get the most finish, the background less, but never none.
 - **The linework boils.** `jit()` and `random()` are reseeded 12 times a second (`BOIL`), so every drawing wobbles slightly, like hand-drawn animation. That's the look; don't fight it. For anything that must stay put from frame to frame (star positions, tuft heights), use `hash(i)`. Give each separate element its own seed with `boilSeed(key)` (see Engine), or one moving thing makes everything drawn after it jitter.
-- **Everything is flat 2D. Never project 3D.** Don't rotate a box in perspective, don't use `rotateY` or WEBGL 3D and don't fake depth with math. Clawd turns through **drawn key views** (front → 3/4 → side → back 3/4 → back), exactly like a cartoon model sheet: see `turn()` and `spinView()`. Depth comes from overlap, scale and colour (farther = smaller, bluer, paler), never from a projection.
+- **2D, 3D or both: whatever serves the video.** Depth can come from overlap, scale and colour (farther = smaller, bluer, paler), from perspective, or from real 3D (WEBGL geometry, shaders, a 3D section behind 2D characters). Make every mix look intended: a 3D element shares the palette and light of the rest, unless the contrast is the point. Clawd and the cast are 2D rigs: they turn through **drawn key views** (front → 3/4 → side → back 3/4 → back), like a cartoon model sheet (`turn()`, `spinView()`); rotating their drawing in perspective looks broken, so a character that must turn in 3D is built in 3D.
 - **Light is the one exception.** p5.brush mixes colour like pigment, so a yellow glow painted over blue turns green, and a thin wash over it turns grey. Use `glow()` for anything that shines: it adds real light, under the paper grain.
 - **Soft palette, no pure black or white.** Use `PAL.ink` for black and `PAL.cream` or `PAL.paper` for white. Keep colours soft and harmonious, and keep Clawd clearly readable against the background.
 
@@ -57,11 +64,12 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 - **Clawd's reactions are painted marks, never letters**: `!`, `?`, zzz, sweat, hearts, a bulb, a rain cloud. Use the emotes (see the reference).
 - **A sign that repeats the story is the classic failure.** If Clawd holds a sign saying "I'm lost", the shot has failed. Show Clawd being lost: looking left, then right, the map upside down, a sweat drop.
 - If the prompt truly needs a word (a name, a shop sign that is the joke), use `letter()`. Paint it into the scene, keep it to one or two words and use it once.
+- **Diegetic marks are set dressing, not text.** When a reference is itself written in the real world (a command prompt, an error code, a keycap, a jersey number, a chemical formula), a small mark painted on the object is part of the world (rule 8). It stays small and secondary and never tells the story: the moment it explains what's happening, it's a caption.
 
 ### 3. Something happens in every scene
 
 - **Every shot needs an event:** something changes between its first frame and its last. Clawd wants something, finds something, tries, fails, reacts or gets it. "Clawd stands in a meadow being cute" is not a shot.
-- **One focal action at a time.** Stage it with a clear silhouette and nothing competing for attention, so it reads at a glance.
+- **One focal action at a time.** Stage it with a clear silhouette and nothing competing for attention, so it reads at a glance. The details of rule 8 surround it without competing.
 - **Cause, then reaction.** When something happens, Clawd reacts to it: a take, an emotion change, a turn toward it. The reaction is often the funniest part, so give it time.
 - **Pay it off.** Whatever you set up in a shot (a door, a sandwich, a strange noise) gets resolved on screen, in that shot or a later one.
 
@@ -110,6 +118,17 @@ For a worked example, see how the demo times its ending, at the end of this guid
 - **Rhyme the ending with the opening:** the same place, pose or motif, changed. It makes the film feel whole.
 - **Link scenes:** motion continues across cuts, and screen direction stays consistent (if Clawd travels right, keep travelling right). Props and characters carry over.
 
+### 8. A world full of details
+
+Every video, by default, is packed with details that refer to what is shown and sung at that moment. The focal action carries the story; the details reward whoever looks again, pauses or rewatches. A bare background, or one that could belong to any song, is a wasted frame.
+
+- **Build a reference bank first** (Step 0). For each section, list what the lyrics name, the culture they come from (its jargon, famous objects, history, memes, in-jokes of the field) and the visual puns hidden in the words. Aim for several per section, more than you will use. Example, for a sailing song: a compass needle that follows the melody, knots tied like the letters of a flag signal, a message in a bottle drifting past, a gull stealing a sandwich at the edge of the frame, waves drawn as the staff of a sea shanty.
+- **Tie each detail to its moment.** A detail refers to what is happening or being sung right then, and the set dressing changes as the song moves on. When a word is sung, the world can answer it: a poster changes, a prop appears, a background character reacts (`cues()`). One static set for the whole video doesn't count.
+- **Fill every layer.** Foreground (things that cross in front of the camera), midground (props around the characters, the ground they stand on), background (walls, screens, skylines, sky), the lyrics themselves (a word can become the thing it names), and background characters living their own little stories in the corners.
+- **Details never steal the read.** They are smaller, lower in contrast or slower than the focal action, or they sit at the edges; the one that is the gag of the moment pops in on its beat or word and leaves the stage to the focal read. Rule 4 still decides where the eye goes: details are what it finds on the second look.
+- **Pause test.** Any frame, paused at random, should offer several things to discover beyond the focal action, and each should make sense for that moment of the song.
+- **Aim high on density.** In a busy section, a still should hold eight or more things to discover across the layers, and something new should arrive every couple of seconds. A background of plain colour bands is a missed chance, not a background. When in doubt, add another reference.
+
 ---
 
 ## Animation principles
@@ -137,12 +156,14 @@ These are the classic principles of character animation, as they apply here. Mos
 Write `STORYBOARD.md` before any scene code. Every video gets a tailored, unique storyboard adapting to the music, audio energy, and theme. When user requests are brief or open, take the initiative as creative director to elevate the concept with original visual metaphors, dynamic staging, and continuous camera flows.
 
 ```
-Logline: one sentence. Clawd wants ___, but ___, so ___.
+Logline: one sentence. Clawd wants ___, but ___, so ___ (without characters: what changes from the first frame to the last).
 World: setting, a small palette, light, how the colour changes across the video.
 Motif: the thing that recurs and pays off.
-Clawd's arc: the emotion keys across the whole video.
+Reference bank: per section, the references and visual puns the song offers (rule 8).
+Arc: the emotion keys of the lead across the whole video (without characters: of the colour, energy and camera).
 Shots:
   A  start–end  [transition in: ___]  what's seen · the EVENT · Clawd's reaction · camera
+     details: the references in this shot, by layer (foreground · midground · background · lyrics), and which ones pop in on a word
      reads:  start–end  the first thing the viewer must understand
              start–end  the next one (where is the viewer's eye when it starts?)
              ...
@@ -158,12 +179,15 @@ Check the storyboard against the rules:
 - Does every read have time to land before the next one starts?
 - Is there a transition at every seam?
 - Is there any text anywhere?
+- Does every shot have details tied to what is shown and sung there, in more than one layer?
 - Does the ending rhyme with the opening?
 
 ### 2. Build
 
 - Put your scene in `projects/my_video.js` (git-ignored), wrapped in an IIFE, and register it with `registerScene('my_video', { duration, bpm, offset, audio, shots })` (see the README). Open it with `studio.html?script=projects/my_video.js` (add the lyrics script first, comma-separated).
-- Build and check one shot at a time, in order.
+- Build and check one shot at a time, in order. Iterate on it with `--draft` (the flat look, 30–50× faster than watercolor): motion and timing only improve with many passes, and a slow look leaves room for few. Switch to the final look to check colour and texture.
+- **Depth beats breadth.** A short video with every shot iterated beats a long one built in one pass. If the song is long, give the key sections the most passes and keep the rest simpler.
+- **Design the key frames first.** Before animating a shot, make its storytelling frames work as posters: a clear focal point off-centre, foreground, middle and background layers, light that leads the eye, and a camera angle chosen for the moment (not always a centred medium shot).
 - Within a shot, block the key poses first and check them as stills (`--sheet` at the key times). Add the motion between them once they read.
 
 ```js
@@ -212,18 +236,25 @@ Open each image and actually look at it. Check:
 - **Boil:** in a strip, each pair of frames that share a boil drawing should match except where something moves. Anything still that changes every frame needs its own `boilSeed()`.
 - **Contacts:** do feet touch the ground? Do held things touch the arm tips? Do thrown things leave from the hand?
 - **Transitions:** check the first and last 0.5 s of every shot and every seam. Does it open and close with a transition?
-- **Rules:** is there any text? Is there any 3D? Is there any dead stretch where nothing is happening?
+- **Rules:** is there any text? Is there any dead stretch where nothing is happening?
+- **Details:** pause on random frames. Is there something to discover beyond the focal action, and does it belong to that moment of the song? Does any detail pull the eye away from the focal read?
 - **Colour:** any muddy glows (use `glow()`), pure black or pure white?
 
-Fix what you find, then look again. **Budget:** at least one sheet per shot, a strip for every key motion and transition, and a crop for every face that carries the story. Contact sheets run about 0.1–1 s per frame, so this is cheap: don't skip it.
+Fix what you find, then look again. **Budget:** at least one sheet per shot, a strip for every key motion and transition, and a crop for every face that carries the story. Strips are how motion gets judged: a video reviewed only through sheets of single frames has never been watched. In `--draft` a strip takes seconds, so this is cheap: don't skip it.
 
 ### 4. Render
+
+First size the machine: `node render.mjs --probe --scene=my_video` (same `--script`, look and blur flags as the render). Render on the best GPU available (the probe warns when Chrome isn't using it) and with the number of `--workers` it recommends; aim high, and only step down if the GPU loses its context or memory runs short (the render resumes where it stopped).
 
 ```bash
 node render.mjs --clip --out=out/video.mp4                      # the whole video, straight to MP4
 node render.mjs --frames --workers=4                            # or: parallel + resumable JPEG frames into out/frames …
 node render.mjs --encode --scene=my_video --out=out/video.mp4   # … then encode them (frames live in out/frames/<scene>/)
 ```
+
+Resuming never mixes versions: if the scene, the engine or a pixel flag changed since the frames on disk were rendered, `--frames` stops and asks for `--fresh` (delete them all and render again) or `--redo=a:b` (re-render only seconds a to b and keep the rest). Use `--redo` only when the change is limited to those seconds; when in doubt, `--fresh`.
+
+Finish: `--blur=4` renders 4 subframes per frame and averages them (motion blur, like a camera's shutter; 4× the render time), and `--post=bloom|film|punch` adds a glow and colour pass while encoding. Frames rendered with a look, `--draft` or `--blur` get their own folder, so pass the same flags to `--encode`.
 
 ---
 
@@ -234,7 +265,10 @@ node render.mjs --encode --scene=my_video --out=out/video.mp4   # … then encod
 | Clawd | `src/clawd.js` | the lead: views, 31 emotions, dances, hats, emotes (full reference in the Clawd section) |
 | Nota | `src/characters.js` | a living spark: soft four-point star with a face. `nota(x, y, r, t, {mood, glow, s})`; `glow` is its life (dims to grey), moods happy, love, surprised, sad, scared, sleepy |
 | Pip | `src/characters.js` | a round ink-blob with a glowing antenna. `pip(x, y, u, t, {sq, rot, open, col})` |
+| Clip | `src/characters.js` | a helpful paperclip assistant with googly eyes and eyebrows. `clippy(x, y, s, t, {look, brow})` |
+| Chatty | `src/characters.js` | a chatbot living in a speech bubble. `chatty(x, y, r, t, {mood})` |
 | Person | `src/characters.js` | a generic everyday human to cast as "me", "a person", "my neighbour". `person(x, y, u, t, {aL, aR, walk, mood, col})`; returns `{handL, handR}` so props sit in its hands |
+| Serpent | `src/characters.js` | a giant snake with glowing eyes and fangs. `serpent(t, hx, hy, s, rise, rage)`; `rise` lifts it into view, `rage` opens the jaws with a red glow |
 
 ## Library
 
@@ -257,6 +291,23 @@ Painted pieces promoted from earlier videos, in `src/fx.js` (options go in a tra
 | `ball(x, y, r, col)` | a painted ball |
 | `synthKeys(x, y, w, {lit})` | a small synth keyboard whose keys light up; returns key positions |
 | `hoverboard(x, y, w, rot, t)` | a hover deck with a beat-pulsing thruster |
+| `paperclip(x, y, s, rot, col)` | a wire paperclip (cheap: two ink strokes, fine by the dozen) |
+| `gauge(x, y, r, k, t)` | a half-dial meter (green → red); k > 1 pins the needle and shakes it |
+| `dropChart(x, y, w, h, k)` | a small chart whose line runs flat and then plunges; k draws the plunge |
+| `bigButton(x, y, r, press)` | a big red push button |
+| `glowCube(x, y, s, rot, t, key, a, lite, col)` | a glowing chip-like cube pulsing on the beat |
+| `chipRocket(x, y, s, rot, t, flame)` | a square chip flying as a rocket |
+| `moon(x, y, r)` | a cratered moon with a soft glow |
+| `mushroom(x, y, s)` | a red-capped mushroom |
+| `disintegrate(x, y, w, h, t, k, cols)` | something falling apart into swirling squares and rebuilding (k 0 → 1 → 0) |
+| `termCursor`, `uiWindow`, `chatBubble`, `typingDots`, `codeLines`, `captcha`, `spinner`, `thumb`, `readout`, `ledWall` | machine-world UI: a blinking cursor, app windows, chat bubbles and dots, code bars, the "I'm not a robot" box, a loader, thumbs up/down, a glowing readout, an LED wall (wave, Game of Life, filling cells) |
+| `pixelPatch(cx, cy, r, t, o)` | a patch of the scene re-rendered as flat tiles with a scanline front |
+| `duck`, `mug`, `floppy`, `plant`, `stickyNote`, `moorePoster`, `heatPoster`, `serverRack`, `beachChair` | desk and lab props: rubber duck, coffee mug, floppy disk, potted plant, sticky note, Moore's-law poster, attention-heatmap poster, server rack, beach chair with umbrella |
+| `candles(scroll, baseY, t, o)` | a candlestick chart that scrolls like a skyline and can soar |
+| `train(x, y, ang, t, u)` | a locomotive that follows any track angle |
+| `robot(x, y, s, k, t)` | a GPU card that unfolds into a robot |
+| `curtain(k, t)` | a theatre curtain coming down |
+| `CAM3`, `proj3(x, y, z, c)`, `grid3(t, o)`, `racks3(t, c)` | a small 3D perspective camera, a 3D grid floor, and server racks along a 3D corridor |
 
 Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `physicalLyrics()`, `hopAcross()`, `wordLetters()` and the camera directors (`src/kinetic.js`); `MOODS`, `moodAt()`, `beatCam()` (beat kicks, shake, and a new framing every `pace` bars) and `moodTime()` (drawings on twos when the mood asks for it) in `src/styles.js`.
 
@@ -269,19 +320,21 @@ Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `phy
 | file | what's in it |
 |---|---|
 | `src/config.js` | `PROJECT = { duration, bpm, offset, audio? }` |
-| `src/core.js` | canvas, palette, timing and motion helpers, `paint()`, camera, full-frame effects, `glow()`, lettering, paper, render hooks |
+| `src/core.js` | canvas, palette, timing and motion helpers, looks (`LOOKS`), `paint()`, camera, full-frame effects, `glow()`, lettering, paper, render hooks and motion blur |
 | `src/clawd.js` | Clawd: views, emotions, eyes, mouths, hats, emotes, moves |
 | `src/timeline.js` | `shots()`, `LOOPS`, `brushWipe()` |
 | `src/kinetic.js` | camera directors (`camPath`, `camDolly`, `camOrbit`, `zoomThrough`) and physical lyrics (`physicalLyrics`, `hopAcross`, `wordLetters`, `kineticWord`, `wordPlatform`, `wordDodge`) |
 | `src/characters.js` | the cast beyond Clawd (see Characters) |
 | `src/fx.js` | the Library: promoted backgrounds, effects and props |
-| `src/comedy.js` | literal comedy: `wordAt()` (when a word is said), `popIn()`, `snapAt()`, `growAt()`, `freezeAt()` |
+| `src/motion.js` | the motion-graphics kit: easing, cascades, lines that draw on, shape morphs, masks, kinetic type (see Motion graphics) |
+| `src/comedy.js` | literal comedy and details that answer the song: `wordAt()` (when a word is said), `cues()` (set dressing that pops in on a word), `popIn()`, `snapAt()`, `growAt()`, `freezeAt()` |
 | `src/scenes/literal.js` | an 8-second sketch of literal comedy (a person, a ball that turns green and grows absurdly). One idea, not a template |
+| `src/scenes/motiongfx.js` | a 10-second sketch of mixing: a painted Clawd inside a motion-graphics world (morph, draw-on lines, a masked reveal, cascading type). One idea, not a template |
 | `src/styles.js` | mood presets (`MOODS`), `moodAt()` for moods per section, `beatCam()` for beat-locked camera energy |
 | `src/scenes/showcase.js` | a 24-second sketch of the paradigm (calm → energetic → calm in one continuous shot, physical lyrics). One idea, not a template |
 | `src/sheets.js` | the model sheets as loops (`?loop=emotions`, `?loop=views`) |
 | `src/scenes/demo.js` | an 11-second example. **Don't copy it** (see the end of this guide) |
-| `studio.html` | open it in Chrome to scrub the video (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
+| `studio.html` | open it in Chrome to scrub the video and switch looks from the toolbar (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
 | `render.mjs` | headless renderer: sheets, strips, crops, stills, PNG loops, MP4 |
 
 ### Frames are pure functions of time
@@ -295,6 +348,34 @@ Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `phy
 - **Each shot paints the whole frame,** background included. The paper texture is under everything and the grain is multiplied over the top, so leaving paper showing is a valid look.
 - **Canvas:** 1920×1080, origin top-left, y down.
 - `LOOPS.name = t => {...}; LOOPS.name.len = 4;` makes a standalone loop (tests, GIFs, sheets), rendered with `--loop=name`.
+
+### Looks
+
+A look is how the drawing calls render; scenes, characters and props stay the same in every look. Pick one per scene with `registerScene('x', { look: 'flat', ... })`; the studio's look menu (or `?look=`) and `--look=` in `render.mjs` override it.
+
+| look | what it is |
+|---|---|
+| `watercolor` (default) | p5.brush pigment: bleeding fills, boiling tapered ink, paper texture and grain. About 1–5 s a frame |
+| `flat` | a clean vector cartoon: solid fills, even outlines, plain background. About 0.05 s a frame, so it is also the draft preview (`--draft`) |
+| `motion` | motion graphics: crisp vector with perfectly still lines (no boil) on a dark ground. Pairs with the motion-graphics kit below |
+
+Looks mix inside a frame: `withLook('flat', () => { ... })` draws whatever is inside in another look (a crisp UI over a painted world, a painted memory inside a flat scene); the paper and grain stay the scene's.
+
+To add a look, add an entry to `LOOKS` in `src/core.js` and, if it needs a new way to draw, a branch in `paint()`/`inkLine()` like the flat one. The rules marked for watercolor (pigment mixing, `wash` over dark grounds, fills cost) only apply to it.
+
+### Motion graphics
+
+`src/motion.js` is a kit for animated graphic design (shapes, lines, type, icons) that mixes with everything else: in the `motion` look for a pure motion-graphics piece, or inside any look, around or under hand-drawn characters (a painted Clawd in a vector world, with `withLook('watercolor', ...)`, is the example in `src/scenes/motiongfx.js`). The style lives in the timing: nothing moves at a constant speed, elements enter in cascades, and shapes turn into each other instead of cutting.
+
+| piece | what it does |
+|---|---|
+| `expoOut`, `expoInOut`, `cubicInOut`, `backInOut`, `bezierEase(x1, y1, x2, y2)` | the easing curves of the style; `bezierEase` takes After Effects / CSS cubic-bezier values |
+| `stagger(t, t0, i, gap, dur, e)`, `inOut(t, a, b, din, dout)` | a cascade (item i starts `gap` s after the previous one); in, hold and out |
+| `trimPts(P, a, b)`, `drawOn(P, t, t0, t1, o)` | a stretch of a path; a line that draws itself on (and off, with `o.off`) |
+| `morphPts(A, B, k)`, `resample(P, n)`, `arcPts(...)` | one closed shape turning into another (circle → card → star); arcs as points |
+| `masked(pts, fn)` | draws `fn` only inside a shape (reveals). Works for native drawing (flat, motion, glow), not for watercolor paint; masks don't nest |
+| `arcRing`, `burstLines`, `dotGrid`, `pillBar` | progress rings, radial hit lines, dot-grid textures, growing bars |
+| `motionText(txt, x, y, t, t0, o)` | title-sequence type, letter by letter: `rise`, `slide`, `scale` or `type` (typewriter) |
 
 ### Painting
 
@@ -320,7 +401,7 @@ Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `phy
 - **One shape, one outline.** Build a creature or prop from as few outlines as you can, so it doesn't look like glued-on stickers: a tail is one `ribbon`, not five circles.
 - **Light:** `glow(x, y, r, colour, a)`. It's additive, so it stays warm on dark grounds and barely shows on light ones (as real light would). Draw it before the things that sit in front of the light.
 - **Palette** `PAL`: `paper, ink, clay, clayDk, clayLt, night, indigo, rose, ochre, sap, teal, violet, cream, sky`. `mixCol(a, b, k)` mixes two hex colours in RGB. Any hex colour works: pick a small palette per video.
-- **p5.brush quirks:**
+- **p5.brush quirks** (watercolor look):
   - Colours mix like pigment: yellow over blue makes green. Layer light colours over dark ones with a full-opacity `wash`, or use `glow()`.
   - `wash` at 255 is exact colour; lower opacities mix.
   - p5 `push()/pop()/translate()/rotate()/scale()` work with all brush calls.
@@ -488,11 +569,12 @@ These are the things that make a Clawd video look generated. Check your storyboa
 - timid poses and takes that barely read
 - jittery linework: still things re-boiling every frame because something moving before them shifted the random stream (`boilSeed`)
 - hard cuts everywhere, or a video that just starts and stops
-- 3D rotation, perspective boxes or projected turns
-- plain p5 shapes, gradients or digital glows mixed into the paint (use `paint`/`inkLine`/`glow`)
+- a 2D character rotated in perspective instead of turning through its drawn views, or a 3D element that ignores the video's look
+- p5 shapes, gradients or digital glows drawn directly instead of through the look (use `paint`/`inkLine`/`glow`)
 - muddy green-grey glows from painting yellow over blue
 - props floating near a hand instead of touching it
 - every shot a different world with nothing linking them
+- bare or generic backgrounds, and details that have nothing to do with what is being sung
 
 ## Physical Lyrics & Continuous Camera
 

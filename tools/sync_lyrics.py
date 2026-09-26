@@ -2,12 +2,12 @@
 
 Usage:
     python tools/sync_lyrics.py <audio file> --id=my_video [--out=projects/my_video.lyrics.js]
-                                [--model=small] [--language=es] [--prompt-file=lyrics.txt]
+                                [--model=medium] [--language=es] [--prompt-file=lyrics.txt]
 
 Writes `registerLyrics('<id>', lines)`, where each line is { t0, t1, words: [[t0, t1, word], ...] }.
 Load it together with the scene: studio.html?script=projects/my_video.lyrics.js,projects/my_video.js
 --prompt-file (the lyrics as plain text, if you have them) makes the transcription far more accurate.
-The first run downloads the Whisper model (small: ~500 MB) into the user's Hugging Face cache.
+The default model is medium: small mishears names and jargon much more often. The first run downloads it (~1.5 GB) into the user's Hugging Face cache.
 """
 import json
 import os
@@ -30,7 +30,7 @@ def main():
         with open(opts["prompt-file"], encoding="utf-8") as f:
             prompt = f.read()
 
-    model = WhisperModel(opts.get("model", "small"), device="cpu", compute_type="int8")
+    model = WhisperModel(opts.get("model", "medium"), device="cpu", compute_type="int8")
     segments, info = model.transcribe(audio, language=opts.get("language"), word_timestamps=True,
                                       initial_prompt=prompt, vad_filter=False, condition_on_previous_text=False)
     lines = []

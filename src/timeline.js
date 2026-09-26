@@ -24,6 +24,7 @@ window.loadScene = function(id) {
   const s = SCENES[id];
   if (!s) return false;
   ACTIVE_SCENE = window.ACTIVE_SCENE = s;
+  setLook(new URLSearchParams(location.search).get('look') || s.look || 'watercolor');
   DUR = s.duration != null ? s.duration : ((typeof PROJECT !== 'undefined' && PROJECT.duration) || 11.0);
   BPM = s.bpm != null ? s.bpm : ((typeof PROJECT !== 'undefined' && PROJECT.bpm) || 120);
   BEAT = 60 / BPM;

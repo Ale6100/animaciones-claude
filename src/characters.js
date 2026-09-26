@@ -98,3 +98,47 @@ function person(x, y, u, t, o = {}) {
   const world = ([hx, hy]) => { const c = Math.cos(o.rot || 0), s = Math.sin(o.rot || 0), px = hx * dir * (1 + sq * .5), py = hy * (1 - sq); return [x + px * c - py * s, y + px * s + py * c]; };
   return { handL: world(hL), handR: world(hR) };
 }
+
+// Serpent: a giant snake (one ribbon body, glowing eyes, fangs) rising from below its head point (hx, hy); s = head size.
+// rise 0..1 lifts it into view, rage 0..1 opens the jaws and flares a red glow.
+function serpent(t, hx, hy, s, rise, rage = 0, key = 'serpent') {
+  const P = [];
+  for (let i = 0; i <= 18; i++) { const f = i / 18; P.push([hx + Math.sin(f * 6 - t * 2.2) * s * 1.3 * f - f * s * .6, hy + f * s * 8 + (1 - rise) * s * 9]); }
+  const head = P[0];
+  if (rage > .01) glow(head[0], head[1], s * 3, '#FF3B3B', .6 * rage);
+  boilSeed(key);
+  paint(ribbon(P, s * .7, s * 1.4), { wash: '#1E4A4E', fill: '#2F6E62', fillOp: 120, bleed: .05, tex: .5, ink: PAL.ink, sw: 1.6 });
+  for (let i = 2; i < 18; i += 2) paint(ellPts(P[i][0], P[i][1], s * .18, s * .12, 10), { wash: '#4E8F72', ink: null });
+  push(); translate(head[0], head[1] + (1 - rise) * 0); rotate(-.15 + .1 * Math.sin(t * 2));
+  paint(ellPts(0, 0, s * 1.2, s * .8, 22), { wash: '#1E4A4E', ink: PAL.ink, sw: 1.6 });
+  const open = rage * .5;
+  paint([[-s * .9, s * .3], [s * .9, s * .3], [s * .6, s * (.35 + open)], [-s * .6, s * (.35 + open)]], { wash: '#5A1A2A', ink: PAL.ink, sw: 1 });
+  for (const sd of [-1, 1]) {
+    paint([[sd * s * .5, s * .3], [sd * s * .38, s * (.3 + .35 + open * .4)], [sd * s * .26, s * .3]], { wash: PAL.cream, ink: PAL.ink, sw: .6 });
+    glow(sd * s * .45, -s * .2, s * .6, '#FF4A3A', .6 + .4 * rage);
+    paint(ellPts(sd * s * .45, -s * .2, s * .22, s * .14, 12, 0, sd * .3), { wash: '#FFCF5A', ink: PAL.ink, sw: .8 });
+    paint(ellPts(sd * s * .45, -s * .2, s * .05, s * .12, 8), { wash: PAL.ink, ink: null });
+  }
+  pop();
+}
+
+// Clip: a helpful paperclip assistant with googly eyes and eyebrows. (x, y) = its centre, s = its length.
+// o: { look (-1..1), brow (0..1 raises them), key }
+function clippy(x, y, s, t, { look = 0, brow = 0, key = 'clippy' } = {}) {
+  paperclip(x, y, s, .12 + .05 * Math.sin(t * 2), '#C9CED8', key);
+  boilSeed(key + 'face');
+  for (const sd of [-1, 1]) { paint(ellPts(x + sd * s * .13, y - s * .28, s * .09, s * .11, 12), { wash: '#FFFFFF', ink: PAL.ink, sw: .8 }); paint(ellPts(x + sd * s * .13 + look * s * .03, y - s * .27, s * .04, s * .05, 8), { wash: PAL.ink, ink: null }); inkLine([[x + sd * s * .2, y - s * (.46 + .06 * brow)], [x + sd * s * .05, y - s * (.43 - .04 * brow * sd)]], 1.4, PAL.ink, 'ink', 0); }
+}
+
+// Chatty: a chatbot living in a speech bubble, with a face. (x, y) = its centre, r = its radius. o: { mood: happy | sad, key }
+function chatty(x, y, r, t, { mood = 'happy', key = 'buddy' } = {}) {
+  boilSeed(key);
+  paint(ellPts(x, y, r * 1.25, r, 30), { wash: '#F7D1E6', ink: PAL.ink, sw: 1.2 });
+  paint([[x - r * .5, y + r * .8], [x - r * .9, y + r * 1.25], [x - r * .1, y + r * .95]], { wash: '#F7D1E6', ink: PAL.ink, sw: 1 });
+  for (const sd of [-1, 1]) {
+    if (mood === 'happy') inkLine([[x + sd * r * .4 - r * .14, y - r * .1], [x + sd * r * .4, y - r * .26], [x + sd * r * .4 + r * .14, y - r * .1]], 1.4, PAL.ink, 'ink', .5);
+    else { paint(ellPts(x + sd * r * .4, y - r * .15, r * .1, r * .14, 12), { wash: PAL.ink, ink: null }); inkLine([[x + sd * r * .55, y - r * .42], [x + sd * r * .25, y - r * .34]], 1.2, PAL.ink, 'ink', 0); }
+    paint(ellPts(x + sd * r * .62, y + r * .12, r * .14, r * .08, 10), { wash: PAL.rose, ink: null });
+  }
+  inkLine([[x - r * .25, y + r * .22], [x, y + r * (mood === 'happy' ? .42 : .3)], [x + r * .25, y + r * .22]], 1.3, PAL.ink, 'ink', .5);
+}

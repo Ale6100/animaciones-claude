@@ -19,7 +19,7 @@ const backOut = x => { x = clamp(x); const s = 1.9; return 1 + (s + 1) * Math.po
 const hash = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 const bpOf = t => (t - OFF) / BEAT;
 // Seeded by the boil frame, so linework "boils" at BOIL fps like hand-drawn animation.
-const jit = a => (random() * 2 - 1) * a;
+const jit = a => LOOK.boil === false ? 0 : (random() * 2 - 1) * a;
 // Each boil drawing holds for several frames, so whatever isn't moving must draw the same until the next one. But a moving
 // thing uses a different amount of randomness each frame, which shifts the stream for everything drawn after it and makes
 // that re-boil every frame (jitter). boilSeed(key) restarts the stream from the boil frame and a key (any string or
@@ -172,9 +172,50 @@ function ribbon(P, w0, w1 = w0) {
   return L.concat(R.reverse());
 }
 
+// ---------- looks ----------
+// A look decides how paint(), inkLine(), the paper and the grain render; scenes, characters and props never change.
+// A scene picks one with `look` in registerScene and ?look= (render.mjs --look=) overrides it. Add a look here when a
+// video needs a style none of these give.
+//   watercolor: p5.brush pigment, bleeding fills, boiling ink, paper texture and grain (slow: ~1-5 s a frame)
+//   flat:       clean vector cartoon, solid fills and even outlines, plain background (fast: also the draft preview)
+//   motion:     motion graphics: crisp vector with perfectly still lines (no boil), on a dark ground; pairs with src/motion.js
+const LOOKS = window.LOOKS = {
+  watercolor: { brush: true, paper: true, grain: true },
+  flat: { brush: false, paper: false, grain: false, bg: PAL.paper, line: { ink: 4.2, inkfine: 2.2, dry: 7 }, lineOp: { dry: 110 } },
+  motion: { brush: false, paper: false, grain: false, boil: false, bg: '#0E1024', line: { ink: 3, inkfine: 1.6, dry: 4 }, lineOp: { dry: 140 } },
+};
+let LOOK = LOOKS.watercolor;
+function setLook(name) {
+  if (!LOOKS[name]) throw new Error(`setLook: unknown look "${name}" (one of: ${Object.keys(LOOKS).join(', ')})`);
+  LOOK = { name, ...LOOKS[name] };
+}
+// Draws fn() in another look, inside the current frame (a flat UI over watercolor, a painted inset in a flat scene).
+// p5.brush composites its layer lazily, so it is flushed at each switch to keep the drawing order; and native WEBGL
+// shapes write depth, which would hide brush paint drawn after them, so the depth buffer is cleared on the way out.
+function withLook(name, fn) {
+  const prev = LOOK;
+  flushBrush(); setLook(name);
+  try { fn(); } finally { flushBrush(); LOOK = prev; drawingContext.clear(drawingContext.DEPTH_BUFFER_BIT); }
+}
+const lookWeight = (sw, br) => sw * ((LOOK.line && LOOK.line[br]) || (LOOK.line && LOOK.line.ink) || 3);
+// A closed curve runs Catmull-Rom around the loop (the neighbours wrap), so it has no seam where it closes.
+function flatShape(pts, closed, curv) {
+  const n = pts.length, S = 5;
+  const P = !(curv && n > 2) ? pts : closed ? through([pts[n - 1], ...pts, pts[0], pts[1]], S).slice(S, S * (n + 1)) : through(pts, S);
+  beginShape(); for (const p of P) vertex(p[0], p[1]); closed ? endShape(CLOSE) : endShape();
+}
+function paintFlat(pts, o) {
+  const col = o.wash || o.fill;
+  // an 8-digit hex colour keeps its own alpha unless an opacity is given
+  if (col) { const c = color(col); if (!o.wash || o.washOp != null || col.length !== 9) c.setAlpha(o.wash ? (o.washOp ?? 255) : (o.fillOp ?? 170)); fill(c); } else noFill();
+  if (o.ink !== null) { const c = color(o.ink || PAL.ink); if (LOOK.lineOp && LOOK.lineOp[o.br] != null) c.setAlpha(LOOK.lineOp[o.br]); stroke(c); strokeWeight(lookWeight(o.sw ?? 1, o.br || 'ink')); strokeJoin(ROUND); } else noStroke();
+  if (col || o.ink !== null) flatShape(pts, true, o.curv);
+}
+
 // ---------- paint wrapper ----------
 // One call = one painted shape: optional flat wash, optional watercolor fill, optional hatch, optional ink outline.
 function paint(pts, o = {}) {
+  if (!LOOK.brush) return paintFlat(pts, o);
   if (o.wash || o.fill || o.hatch) {
     if (o.wash) brush.wash(o.wash, o.washOp ?? 255); else brush.noWash();
     if (o.fill) { brush.fill(o.fill, o.fillOp ?? 170); brush.fillBleed(o.bleed ?? .1); brush.fillTexture(o.tex ?? .4, o.border ?? .35); } else brush.noFill();
@@ -190,6 +231,11 @@ function paint(pts, o = {}) {
   }
 }
 function inkLine(pts, sw = 1, col = PAL.ink, br = 'ink', curv = .5) {
+  if (!LOOK.brush) {
+    const c = color(col); if (LOOK.lineOp && LOOK.lineOp[br] != null) c.setAlpha(LOOK.lineOp[br]);
+    noFill(); stroke(c); strokeWeight(lookWeight(sw, br)); strokeJoin(ROUND); strokeCap(ROUND);
+    return flatShape(pts, false, curv);
+  }
   brush.noFill(); brush.noWash(); brush.noHatch(); brush.set(br, col, sw); brush.spline(pts, curv);
 }
 
@@ -220,6 +266,7 @@ function drawLetters(c) {
 // p5.brush defers washes and strokes into a mask layer; a (tiny, off-screen) watercolor fill forces it to composite
 // now, so everything painted before this call really lands under whatever p5 draws next (letters, glow).
 function flushBrush() {
+  if (!LOOK.brush) return;
   push(); resetMatrix(); translate(-W / 2, -H / 2);
   brush.noStroke(); brush.noHatch(); brush.noWash(); brush.fill('#000000', 1); brush.fillBleed(0); brush.fillTexture(0, 0);
   brush.polygon([[-50, -50], [-40, -50], [-40, -40]]); brush.noFill(); pop();
@@ -276,8 +323,8 @@ function draw() {
   if (!window.ready) return;
   LETTERS = []; CAM = null;
   push(); translate(-W / 2, -H / 2);
-  BOILN = Math.floor(T * BOIL); CLAWD_N = 0; boilSeed('frame'); noiseSeed(77);
-  image(paperG, 0, 0);
+  BOILN = Math.floor((BOIL_T ?? T) * BOIL); CLAWD_N = 0; boilSeed('frame'); noiseSeed(77);
+  if (LOOK.paper) image(paperG, 0, 0); else background(LOOK.bg || PAL.paper);
   drawWorld(T);
   pop();
 }
@@ -307,20 +354,32 @@ function composite(t) {
   c.drawImage(drawingContext.canvas, 0, 0, W, H);
   drawLetters(c);
   drawKaraokeText(c);
-  c.globalCompositeOperation = 'multiply'; c.drawImage(grainC, 0, 0);
+  if (LOOK.grain) { c.globalCompositeOperation = 'multiply'; c.drawImage(grainC, 0, 0); }
   c.globalCompositeOperation = 'source-over';
 }
-window.renderAt = async (t, type = 'image/png', q = .92) => {
-  if (drawingContext && drawingContext.isContextLost && drawingContext.isContextLost()) {
-    throw new Error('WebGL context lost at t=' + t);
-  }
+const lostContext = () => drawingContext && drawingContext.isContextLost && drawingContext.isContextLost();
+async function renderOne(t) {
   T = t;
   await redraw();
-  if (drawingContext && drawingContext.isContextLost && drawingContext.isContextLost()) {
-    throw new Error('WebGL context lost after redraw at t=' + t);
-  }
+  if (lostContext()) throw new Error('WebGL context lost after redraw at t=' + t);
   composite(t);
-  return outC.toDataURL(type, q);
+}
+// Motion blur: sub > 1 averages `sub` renders spread over the shutter (a fraction of the frame, .5 = a film camera's
+// 180 degree shutter), so fast moves smear like a real camera. Every subframe keeps the frame's boil drawing, so
+// still linework stays sharp. Costs `sub` times the render time.
+let BOIL_T = null, accC = null;
+window.renderAt = async (t, type = 'image/png', q = .92, sub = 1, shutter = .5, fps = 24) => {
+  if (lostContext()) throw new Error('WebGL context lost at t=' + t);
+  if (sub <= 1) { BOIL_T = null; await renderOne(t); return outC.toDataURL(type, q); }
+  if (!accC) { accC = document.createElement('canvas'); accC.width = W; accC.height = H; }
+  const ax = accC.getContext('2d');
+  BOIL_T = t;
+  for (let k = 0; k < sub; k++) {
+    await renderOne(t + ((k + .5) / sub - .5) * shutter / fps);
+    ax.globalAlpha = 1 / (k + 1); ax.drawImage(outC, 0, 0);
+  }
+  ax.globalAlpha = 1; BOIL_T = null;
+  return accC.toDataURL(type, q);
 };
 // Contact sheet of several times, for visual checks: returns { url, ms[] }. crop = [x, y, w, h] fills each cell with just
 // that region of the frame, at full resolution (for checking faces, hands and contacts up close).

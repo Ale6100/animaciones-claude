@@ -267,7 +267,9 @@
   //   o: { area: [x0, y0, x1, y1], size, colors, stroke, motion: 'drop'|'pop'|'rise', exit: 'shatter'|'fade'|'fall',
   //        maxWords (default 6: longer lines are split into phrases), hold (s after the line ends), wave, tilt, layouts: ['stairs','arc','scatter','stack'], hits: [{ t, x }],
   //        bounce (default true: each word dips as if landed on, just after it appears),
-  //        textAt(t0) → overrides for a line starting at t0, e.g. t0 => moodAt(t0, sections).text }
+  //        textAt(t0) → overrides for a line starting at t0, e.g. t0 => moodAt(t0, sections).text,
+  //        phrase(L, i) → overrides for one phrase (area, size, layouts, colors, exit...): design the hooks by hand and
+  //        leave the automatic layout for the rest }
   // Splits long lines (a transcription segment can hold a whole verse) into short phrases of at most `max` words,
   // cutting at sung pauses when there is one, so every phrase stays big and readable.
   window.splitPhrases = function(lines, max = 6, pause = .35) {
@@ -287,12 +289,13 @@
 
   window.physicalLyrics = function(t, lines, o = {}) {
     lines = splitPhrases(lines, o.maxWords || 6);
-    const [ax0, ay0, ax1, ay1] = o.area || [160, 140, W - 160, H - 220];
     const onScreen = [];
     lines.forEach((L, li) => {
       if (!L.words || !L.words.length) return;
       // each line keeps the style it was born with, so a mood change never restyles words already on screen
-      const q = o.textAt ? { ...o, ...o.textAt(L.words[0][0]) } : o;
+      let q = o.textAt ? { ...o, ...o.textAt(L.words[0][0]) } : o;
+      if (o.phrase) q = { ...q, ...(o.phrase(L, li) || {}) };
+      const [ax0, ay0, ax1, ay1] = q.area || [160, 140, W - 160, H - 220];
       const hold = q.hold ?? .5, exit = q.exit || 'shatter', gone = L.t1 + hold;
       const cols = q.colors || [PAL.cream, PAL.ochre, PAL.rose], layouts = q.layouts || ['stairs', 'arc', 'scatter', 'stack'];
       if (t < L.words[0][0] - .05 || t > gone + 1) return;

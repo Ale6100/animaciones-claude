@@ -31,6 +31,7 @@
   <canvas id="out" width="1920" height="1080"></canvas>
   <div class="bar">
     <select id="sceneSelect" class="select-box" title="Select Scene"></select>
+    <select id="lookSelect" class="select-box" title="Look"></select>
     <button id="playBtn" class="btn">▶ Play</button>
     <input id="scrub" type="range" min="0" max="11" step="0.0417" value="0">
     <span id="tt">0.00s</span>
@@ -47,6 +48,7 @@
 <script src="src/kinetic.js"></script>
 <script src="src/styles.js"></script>
 <script src="src/fx.js"></script>
+<script src="src/motion.js"></script>
 <script src="src/comedy.js"></script>
 <script src="src/timeline.js"></script>
 <!-- reference sheets (standalone loops) -->
@@ -57,6 +59,7 @@
 <script src="src/scenes/claude_pop.js"></script>
 <script src="src/scenes/showcase.js"></script>
 <script src="src/scenes/literal.js"></script>
+<script src="src/scenes/motiongfx.js"></script>
 
 <script>
   const audio = document.getElementById('bgAudio');
@@ -64,6 +67,7 @@
   const scrub = document.getElementById('scrub');
   const tt = document.getElementById('tt');
   const sceneSelect = document.getElementById('sceneSelect');
+  const lookSelect = document.getElementById('lookSelect');
   let isPlaying = false;
   let playStartT = 0, playStartWall = 0;
 
@@ -85,6 +89,7 @@
     }
     tt.textContent = `0.00s / ${maxT.toFixed(2)}s`;
     document.title = `${scene.title || scene.id} - Clawd Studio`;
+    buildLookUI(scene);
     if (window.ready) window.renderAt(0);
   }
 
@@ -131,6 +136,29 @@
       window.loadScene(chosen);
       applySceneUI(window.ACTIVE_SCENE);
     }
+  });
+
+  // The look menu writes ?look= into the URL, which loadScene() reads, so the choice survives scene changes and reloads.
+  function buildLookUI(scene) {
+    const chosen = new URLSearchParams(location.search).get('look') || '';
+    lookSelect.innerHTML = '';
+    const own = document.createElement('option');
+    own.value = ''; own.textContent = `Look: scene (${scene.look || 'watercolor'})`;
+    lookSelect.appendChild(own);
+    Object.keys(window.LOOKS || {}).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = `Look: ${name}`;
+      lookSelect.appendChild(opt);
+    });
+    lookSelect.value = chosen;
+  }
+
+  lookSelect.addEventListener('change', () => {
+    const url = new URL(location.href);
+    if (lookSelect.value) url.searchParams.set('look', lookSelect.value); else url.searchParams.delete('look');
+    history.replaceState(null, '', url);
+    setLook(lookSelect.value || (window.ACTIVE_SCENE && window.ACTIVE_SCENE.look) || 'watercolor');
+    if (window.ready) window.renderAt(+scrub.value);
   });
 
   window.onSceneChange = applySceneUI;
