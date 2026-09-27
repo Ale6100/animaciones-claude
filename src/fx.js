@@ -922,3 +922,116 @@ function tvSet(x, y, w, t, screen, { col = '#9ADCE8', key = 'tv' } = {}) {
   for (let i = 0; i < 2; i++) paint(ellPts(x0 + w * .87, y0 + h * (.25 + i * .22), w * .045, w * .045, 10), { wash: '#D9C09A', ink: PAL.ink, sw: sw * .6 });
   for (let i = 0; i < 4; i++) inkLine([[x0 + w * .8, y0 + h * (.68 + i * .06)], [x0 + w * .94, y0 + h * (.68 + i * .06)]], sw * .5, '#4A2E22', 'inkfine', 0);
 }
+
+// ---------- crowds and creature parts ----------
+// A crown of five points with jewels, standing on (x, y); s = half its width.
+function crown(x, y, s, { col = '#F6C445', gem = '#E0483B', key = 'crown' } = {}) {
+  boilSeed(key);
+  paint([[x - s, y], [x - s, y - s * .8], [x - s * .5, y - s * .35], [x, y - s], [x + s * .5, y - s * .35], [x + s, y - s * .8], [x + s, y]], { wash: col, ink: PAL.ink, sw: 1.2 });
+  for (const dx of [-.5, 0, .5]) paint(ellPts(x + dx * s, y - s * .18, s * .1, s * .1, 8), { wash: gem, ink: null });
+}
+// Cartoon jaws centred on (cx, cy), s = half their width; open 0..1. Grow s past the frame for a chomp that covers it.
+function jaws(cx, cy, s, open, { col = '#F7D1E6', teeth = PAL.cream, mouth = '#2A0E1E', key = 'jaws' } = {}) {
+  boilSeed(key);
+  const up = [...Array(17)].map((_, i) => { const a = Math.PI + i / 16 * Math.PI; return [cx + Math.cos(a) * s, cy - open * s * .5 + Math.sin(a) * s * .5]; });
+  const dn = [...Array(17)].map((_, i) => { const a = i / 16 * Math.PI; return [cx + Math.cos(a) * s, cy + open * s * .5 + Math.sin(a) * s * .5]; });
+  paint(ellPts(cx, cy, s * .98, s * (.06 + open * .5), 24), { wash: mouth, ink: null });
+  paint(up, { wash: col, ink: PAL.ink, sw: 2 });
+  paint(dn, { wash: col, ink: PAL.ink, sw: 2 });
+  for (let i = 0; i < 8; i++) {
+    const x0 = cx - s * .85 + i * s * .22;
+    paint([[x0, cy - open * s * .5], [x0 + s * .1, cy - open * s * .5 + s * .16], [x0 + s * .2, cy - open * s * .5]], { wash: teeth, ink: PAL.ink, sw: 1 });
+    paint([[x0 + s * .1, cy + open * s * .5], [x0 + s * .2, cy + open * s * .5 - s * .16], [x0 + s * .3, cy + open * s * .5]], { wash: teeth, ink: PAL.ink, sw: 1 });
+  }
+}
+// A row of n audience silhouettes along y, bobbing on the beat, a few holding up glowing phones; cols are their shades.
+function audience(t, n, y, cols, { key = 'aud' } = {}) {
+  for (let i = 0; i < n; i++) {
+    const x = -40 + i * (W + 80) / (n - 1) + 20 * Math.sin(i * 2.1), bob = 10 * pulse(t + hash(i) * .2, 4) * (i % 3 === 0 ? 1.4 : 1), s = 70 + 22 * hash(i * 3.1);
+    boilSeed(key + i);
+    paint(ellPts(x, y - s * .9 - bob, s * .55, s * .6, 20), { wash: cols[i % cols.length], ink: null });
+    paint(ellPts(x, y + s * .3 - bob, s * 1.1, s * .9, 22), { wash: cols[i % cols.length], ink: null });
+    if (hash(i * 7.7) > .72) { const px = x + s * .6, py = y - s * 1.6 - bob; glow(px, py, 60, '#BFE8FF', .3); paint(rrPts(px - 12, py - 20, 24, 40, 4), { wash: '#BFE8FF', ink: PAL.ink, sw: .6 }); }
+  }
+}
+
+// ---------- print-poster backgrounds and stage props ----------
+// Graph paper: a full-frame grid of thin lines every `step` px over `bg`, with a heavier line every fifth.
+function gridPaper(bg, line, { step = 60, x0 = -600, y0 = -600, w = W + 1200, h = H + 1200, key = 'grid' } = {}) {
+  boilSeed(key);
+  paint(rectPts(x0, y0, w, h), { wash: bg, ink: null });
+  for (let x = x0; x <= x0 + w; x += step) inkLine([[x, y0], [x, y0 + h]], Math.round((x - x0) / step) % 5 ? .35 : .8, line, 'inkfine', 0);
+  for (let y = y0; y <= y0 + h; y += step) inkLine([[x0, y], [x0 + w, y]], Math.round((y - y0) / step) % 5 ? .35 : .8, line, 'inkfine', 0);
+}
+// Poster rays turning around (cx, cy): n wedges alternating between two colours over a base colour.
+function sunburst(cx, cy, t, cols, { n = 16, speed = .15, r = 2600, key = 'rays' } = {}) {
+  boilSeed(key);
+  paint(rectPts(cx - r, cy - r, 2 * r, 2 * r), { wash: cols[0], ink: null });
+  for (let i = 0; i < n; i += 2) { const a0 = i / n * TAU + t * speed, a1 = (i + 1) / n * TAU + t * speed; paint([[cx, cy], [cx + Math.cos(a0) * r, cy + Math.sin(a0) * r], [cx + Math.cos(a1) * r, cy + Math.sin(a1) * r]], { wash: cols[1], ink: null }); }
+}
+// A tunnel of nested rounded screens receding to (cx, cy) and rushing outwards with `speed` (0 = still), pulsing on the beat.
+function screenTunnel(cx, cy, t, { cols = ['#1E2A6A', '#2A3A86'], line = '#BFD8FF', n = 9, speed = .6, key = 'tunnel' } = {}) {
+  boilSeed(key);
+  for (let i = n; i >= 0; i--) {
+    const f = Math.pow((i + frac(t * speed)) / n, 1.6), w = 80 + f * 2600, h = w * .6, r = w * .06;
+    paint(rrPts(cx - w / 2, cy - h / 2, w, h, r), { wash: cols[i % cols.length], ink: line, sw: .6 + 1.4 * f });
+  }
+  glow(cx, cy, 260 + 60 * pulse(t, 4), line, .35);
+}
+// A P(doom)-style thermometer standing on (x, y), h tall: the mercury rises with k (0..1, above 1 it cracks the tube and
+// sprays), the bulb shows the reading as a percentage.
+function thermometer(x, y, h, k, t, { col = '#E0483B', label = '', key = 'thermo' } = {}) {
+  const w = h * .14, top = y - h, lvl = y - h * .12 - (h * .8) * clamp(k), over = clamp((k - 1) * 4);
+  boilSeed(key);
+  paint(rrPts(x - w / 2 - 6, top - 6, w + 12, h * .92 + 12, w / 2 + 6), { wash: PAL.cream, ink: PAL.ink, sw: 1.6 });
+  paint(rrPts(x - w * .28, lvl, w * .56, y - h * .1 - lvl, w * .28), { wash: col, ink: null });
+  for (let i = 1; i < 10; i++) inkLine([[x + w / 2 - 4, top + i * h * .08], [x + w / 2 - 16, top + i * h * .08]], 1, PAL.ink, 'inkfine', 0);
+  paint(ellPts(x, y - h * .02, w * 1.05, w * 1.05, 22), { wash: col, ink: PAL.ink, sw: 1.6 });
+  if (over > 0) {
+    glow(x, top, h * .4 * over, '#FF5A4A', .6 * over);
+    inkLine([[x - w * .3, top + h * .05], [x + w * .1, top + h * .12], [x - w * .1, top + h * .2]], 1.4, PAL.ink, 'ink', 0);
+    for (let i = 0; i < 6; i++) { const f = frac(t * 1.5 + i / 6); paint(ellPts(x + Math.cos(i * 1.7) * f * h * .3, top - f * h * .25 + f * f * h * .3, 8, 8, 8), { wash: col, ink: null }); }
+  }
+  const pct = Math.min(99.9, k * 100);
+  letter(`${pct >= 99.9 ? '99.9' : pct.toFixed(0)}%`, x, y - h * .02, w * .62, PAL.cream, { font: `${Math.round(w * .62)}px "Anton", "Impact", sans-serif`, ink: false });
+  if (label) letter(label, x, top - w * .9, w * .7, PAL.cream, { font: `${Math.round(w * .7)}px "Anton", "Impact", sans-serif`, stroke: PAL.ink, shadow: '#1E2A6A', shadowK: .06 });
+}
+// A heart-shaped bird cage hanging from (x, y), s = its half width; open 0..1 swings its door.
+function heartCage(x, y, s, open = 0, { col = '#E8AA38', key = 'hcage' } = {}) {
+  boilSeed(key);
+  inkLine([[x, y], [x, y + s * .35]], 1.8, col, 'ink', 0);
+  const H = heartPts(x, y + s * 1.2, s);
+  inkLine([...H, H[0]], 2.4, col, 'ink', .3);
+  for (let i = -3; i <= 3; i++) { const bx = x + i * s * .26; inkLine([[bx, y + s * .55 + Math.abs(i) * s * .06], [bx, y + s * 1.95 - Math.abs(i) * s * .2]], 1.3, col, 'ink', 0); }
+  paint(ellPts(x, y + s * 2.05, s * .7, s * .12, 16), { wash: col, ink: PAL.ink, sw: 1 });
+  const dx = x + s * .3, dw = s * .5 * Math.cos(open * 1.4);
+  paint(rectPts(dx, y + s * .95, dw, s * .75), { wash: col, washOp: 90, ink: col, sw: 1.6 });
+}
+// A saxophone held at (x, y) (the mouthpiece), s = its length; rot turns it.
+function saxophone(x, y, s, rot = 0, { col = '#E8AA38', key = 'sax' } = {}) {
+  boilSeed(key);
+  push(); translate(x, y); rotate(rot);
+  const body = [[0, 0], [s * .15, s * .05], [s * .25, s * .55], [s * .32, s * .85], [s * .5, s * .95], [s * .7, s * .8], [s * .75, s * .62]];
+  paint(ribbon(body, s * .05, s * .14), { wash: col, ink: PAL.ink, sw: 1.2 });
+  paint(ellPts(s * .76, s * .6, s * .15, s * .07, 16, 0, -.4), { wash: mixCol(col, '#5A3A12', .35), ink: PAL.ink, sw: 1.1 });
+  for (let i = 0; i < 4; i++) paint(ellPts(s * (.2 + i * .035), s * (.3 + i * .12), s * .03, s * .03, 8), { wash: PAL.cream, ink: PAL.ink, sw: .6 });
+  pop();
+}
+// A split-flap board (the airport kind) centred on (x, y): each cell flips from its old character (o.from) to the
+// new one (text) one after another from o.t0, with the flap falling over the middle. o: { t0, from, cell (width), col, ink }
+function splitFlap(x, y, text, t, { t0 = 0, from = '', cell = 90, col = '#1A1D2E', ink = PAL.cream, key = 'flap' } = {}) {
+  const h = cell * 1.45, n = text.length, x0 = x - n * cell * 1.08 / 2 + cell * .54;
+  const font = `${Math.round(cell * 1.05)}px "Anton", "Impact", sans-serif`;
+  boilSeed(key);
+  paint(rrPts(x0 - cell * .75, y - h * .72, n * cell * 1.08 + cell * .42, h * 1.44, cell * .12), { wash: mixCol(col, PAL.ink, .4), ink: PAL.ink, sw: 1.6 });
+  for (let i = 0; i < n; i++) {
+    const cx = x0 + i * cell * 1.08, k = clamp((t - t0 - i * .07) / .2), ch = k >= 1 ? text[i] : (from[i] ?? ' ');
+    paint(rrPts(cx - cell / 2, y - h / 2, cell, h, cell * .08), { wash: col, ink: PAL.ink, sw: 1 });
+    if (k <= 0 || k >= 1) letter(ch, cx, y + cell * .04, cell * 1.05, ink, { font, ink: false });
+    else {                                           // mid-flip: the falling flap squashes over the top half, then the bottom half
+      const s = Math.cos(k * Math.PI), top = s > 0;
+      paint(rectPts(cx - cell / 2, top ? y - h / 2 * s : y, cell, h / 2 * Math.abs(s)), { wash: mixCol(col, PAL.cream, .12), ink: PAL.ink, sw: .8 });
+    }
+    inkLine([[cx - cell / 2, y], [cx + cell / 2, y]], 1.4, PAL.ink, 'ink', 0);
+  }
+}

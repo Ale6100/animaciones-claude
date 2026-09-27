@@ -131,7 +131,7 @@ function irisShape(pts, col = PAL.ink, far = 4000) {
 }
 function iris(cx, cy, r, col = PAL.ink) { if (r < 4) paint(rectPts(-60, -60, W + 120, H + 120), { wash: col, ink: null }); else irisShape(ellPts(cx, cy, r, r, 40), col); }
 
-let T = 0, paperG = null, grainC = null, letG = null, glowTex = null, outC = null, outX = null;
+let T = 0, paperG = null, grainC = null, halftoneC = null, printC = null, letG = null, glowTex = null, outC = null, outX = null;
 let LETTERS = [];
 
 // ---------- geometry ----------
@@ -183,10 +183,12 @@ function ribbon(P, w0, w1 = w0) {
 //   watercolor: p5.brush pigment, bleeding fills, boiling ink, paper texture and grain (slow: ~1-5 s a frame)
 //   flat:       clean vector cartoon, solid fills and even outlines, plain background (fast: also the draft preview)
 //   motion:     motion graphics: crisp vector with perfectly still lines (no boil), on a dark ground; pairs with src/motion.js
+//   print:      a risograph / screen print: flat inks on cream paper, printed twice slightly off register, under a dot screen
 const LOOKS = window.LOOKS = {
   watercolor: { brush: true, paper: true, grain: true },
   flat: { brush: false, paper: false, grain: false, bg: PAL.paper, line: { ink: 4.2, inkfine: 2.2, dry: 7 }, lineOp: { dry: 110 } },
   motion: { brush: false, paper: false, grain: false, boil: false, bg: '#0E1024', line: { ink: 3, inkfine: 1.6, dry: 4 }, lineOp: { dry: 140 } },
+  print: { brush: false, paper: true, grain: true, print: true, boil: false, line: { ink: 3.4, inkfine: 1.8, dry: 5 }, lineOp: { dry: 130 } },
 };
 let LOOK = LOOKS.motion;
 function setLook(name) {
@@ -285,7 +287,7 @@ function drawLetters(c) {
     c.font = L.font || `${L.size}px "Permanent Marker", "Comic Sans MS", cursive`;
     c.textAlign = L.align || 'center'; c.textBaseline = 'middle';
     if (L.stroke) { c.lineJoin = 'round'; c.lineWidth = L.size * .12; c.strokeStyle = L.stroke; c.strokeText(L.txt, 0, 0); }
-    if (L.ink !== false) { c.fillStyle = PAL.ink; c.fillText(L.txt, L.size * .045, L.size * .055); }
+    if (L.ink !== false) { c.fillStyle = L.shadow || PAL.ink; c.fillText(L.txt, L.size * (L.shadowK ?? .045), L.size * (L.shadowK ?? .045) * 1.2); }
     c.fillStyle = L.color; c.fillText(L.txt, 0, 0);
     c.restore();
   }
@@ -329,6 +331,13 @@ function makeGrain() {
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   return cv;
 }
+// A fine dot screen, multiplied over the print look so every ink reads as printed.
+function makeHalftone() {
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+  c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); c.fillStyle = 'rgba(70,50,60,.16)';
+  for (let y = 0; y < H + 8; y += 7) for (let x = (y / 7) % 2 ? 3.5 : 0; x < W + 8; x += 7) { c.beginPath(); c.arc(x, y, 1.5, 0, TAU); c.fill(); }
+  return cv;
+}
 
 // ---------- custom brushes ----------
 function defineBrushes() {
@@ -341,9 +350,9 @@ function defineBrushes() {
 async function setup() {
   createCanvas(W, H, WEBGL); pixelDensity(1); noLoop();
   brush.scaleBrushes(5); defineBrushes();
-  paperG = makePaper(); grainC = makeGrain(); glowTex = makeGlowTex(); letG = createGraphics(W, H); letG.pixelDensity(1);
+  paperG = makePaper(); grainC = makeGrain(); halftoneC = makeHalftone(); glowTex = makeGlowTex(); letG = createGraphics(W, H); letG.pixelDensity(1);
   outC = document.getElementById('out'); outX = outC.getContext('2d');
-  await document.fonts.load('100px "Permanent Marker"');
+  await document.fonts.load('100px "Permanent Marker"'); await document.fonts.load('100px "Anton"');
   await Promise.all(['500 100px "Shantell Sans"', '800 100px "Shantell Sans"', '100px "Noto Sans Math"'].map(f => document.fonts.load(f, 'x∧⇒∑')));
   window.ready = true;
   if (!location.search.includes('render')) devUI();
@@ -383,7 +392,18 @@ function composite(t) {
   c.drawImage(drawingContext.canvas, 0, 0, W, H);
   drawLetters(c);
   drawKaraokeText(c);
+  if (LOOK.print) printPass(c);
   if (LOOK.grain) { c.globalCompositeOperation = 'multiply'; c.drawImage(grainC, 0, 0); }
+  c.globalCompositeOperation = 'source-over';
+}
+// The print look: the whole frame, lettering included, printed a second time a few pixels off (misregistration),
+// then a dot screen over it.
+function printPass(c) {
+  if (!printC) { printC = document.createElement('canvas'); printC.width = W; printC.height = H; }
+  const p = printC.getContext('2d');
+  p.globalCompositeOperation = 'copy'; p.drawImage(c.canvas, 0, 0);
+  c.globalCompositeOperation = 'multiply'; c.globalAlpha = .28; c.drawImage(printC, 5, 3);
+  c.globalAlpha = 1; c.drawImage(halftoneC, 0, 0);
   c.globalCompositeOperation = 'source-over';
 }
 const lostContext = () => drawingContext && drawingContext.isContextLost && drawingContext.isContextLost();

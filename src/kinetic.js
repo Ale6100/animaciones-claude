@@ -221,10 +221,12 @@
   //   o.enter: seconds for the letters to arrive one after another from o.t0; o.enterStyle: 'drop' | 'pop' | 'rise'
   //   o.hits: [{ t, x }] impacts that make the letters near x dip and spring back
   //   o.shatter: { t, x, force } sends every letter flying on an arc · o.fade: { t, dur } fades the word out
+  //   o.font: a CSS font with {size} where the size goes (default Permanent Marker) · o.shadow: colour of the offset ink under it
   // Returns the letters' positions so characters can stand on them: { letters: [{ ch, x, y, w, top }], left, right, topAt(x) }.
   window.wordLetters = function(txt, x, y, size, t, o = {}) {
     const ctx = outX, chars = [...txt];
-    ctx.save(); ctx.font = `${size}px "Permanent Marker", "Comic Sans MS", cursive`;
+    const font = (o.font || '{size}px "Permanent Marker", "Comic Sans MS", cursive').replace('{size}', size);
+    ctx.save(); ctx.font = font;
     const widths = chars.map(ch => ctx.measureText(ch).width), total = widths.reduce((a, b) => a + b, 0);
     ctx.restore();
     const wr = o.rot || 0, c = Math.cos(wr), s = Math.sin(wr);
@@ -254,7 +256,8 @@
     });
     for (const L of letters) {
       if (L.alpha <= .01) continue;
-      letter(L.ch, L.x, L.y, size, o.color || PAL.cream, { rot: L.rot, alpha: L.alpha, stroke: o.stroke, pop: L.pop, screen: o.screen });
+      letter(L.ch, L.x, L.y, size, o.color || PAL.cream, { rot: L.rot, alpha: L.alpha, stroke: o.stroke, pop: L.pop, screen: o.screen, shadow: o.shadow, shadowK: o.shadowK,
+        font: o.font && o.font.replace('{size}', size) });
     }
     const topAt = px => { let best = letters[0]; for (const L of letters) if (Math.abs(L.x - px) < Math.abs(best.x - px)) best = L; return best.top; };
     return { letters, left: x - total / 2 * c, right: x + total / 2 * c, topAt, x, y, size };
@@ -266,7 +269,8 @@
   //   lines: [{ t0, t1, words: [[t0, t1, word], ...] }] (LYRICS[id] from tools/sync_lyrics.py, or written by hand)
   //   o: { area: [x0, y0, x1, y1], size, colors, stroke, motion: 'drop'|'pop'|'rise', exit: 'shatter'|'fade'|'fall',
   //        maxWords (default 6: longer lines are split into phrases), hold (s after the line ends), wave, tilt, layouts: ['stairs','arc','scatter','stack'], hits: [{ t, x }],
-  //        bounce (default true: each word dips as if landed on, just after it appears),
+  //        bounce (default true: each word dips as if landed on, just after it appears), font, shadow, shadowK (see wordLetters),
+  //        charW (a letter's width over its size, for the layout: .62 fits Permanent Marker, ~.45 a condensed display face),
   //        textAt(t0) → overrides for a line starting at t0, e.g. t0 => moodAt(t0, sections).text,
   //        phrase(L, i) → overrides for one phrase (area, size, layouts, colors, exit...): design the hooks by hand and
   //        leave the automatic layout for the rest }
@@ -304,7 +308,7 @@
       // then positions from the words' real widths so long words never overlap their neighbours
       const base = q.size || 110, aw = ax1 - ax0, ah = ay1 - ay0, gapK = .35;
       const raw = L.words.map(([a, b, word]) => base * (.8 + .6 * clamp((b - a - .2) / .6)) * (word.length <= 3 ? 1.15 : 1));
-      const width = (i, sc) => L.words[i][2].length * raw[i] * sc * .62;
+      const width = (i, sc) => L.words[i][2].length * raw[i] * sc * (q.charW || .62);
       const perRow = layout === 'stack' ? 1 : layout === 'scatter' ? 3 : n, rowsN = Math.ceil(n / perRow);
       const rowsOf = [...Array(rowsN)].map((_, r) => [...Array(Math.min(perRow, n - r * perRow))].map((_, j) => r * perRow + j));
       const rowW = (r, sc) => rowsOf[r].reduce((acc, i) => acc + width(i, sc) + base * sc * gapK, -base * sc * gapK);
@@ -327,7 +331,7 @@
         else y = rowY + (hs - .5) * tallest * sc * .3;
         const size = raw[wi] * sc;
         const rot = (q.tilt ?? .35) * (hash(li * 7 + wi * 13) - .5);
-        const lo = { rot, color: cols[(li + wi) % cols.length], stroke: q.stroke || PAL.ink, wave: q.wave || 0, enter: .18, t0: a, enterStyle: q.motion || 'drop',
+        const lo = { rot, color: cols[(li + wi) % cols.length], stroke: q.stroke || PAL.ink, wave: q.wave || 0, enter: .18, t0: a, enterStyle: q.motion || 'drop', font: q.font, shadow: q.shadow, shadowK: q.shadowK,
           hits: [...(q.bounce === false ? [] : [{ t: a + .2, x }]), ...(q.hits || [])] };
         if (exit === 'shatter') lo.shatter = { t: gone + wi * .04, x: (ax0 + ax1) / 2 };
         else if (exit === 'fade') lo.fade = { t: gone, dur: .5 };
@@ -337,6 +341,33 @@
       });
     });
     return onScreen;
+  };
+
+  // Display type for a hook: one huge condensed word (or a few) slammed in at t0 with overshoot, a heavy outline and an
+  // offset second ink, held until t1 and then punched away. The word is the graphic of the shot, like a poster.
+  //   o: { color, shadow, stroke, rot, font (with {size}), sub: a smaller line above it, subColor, t1, exit: 'pop'|'fade' }
+  window.heroWord = function(txt, x, y, size, t, t0, o = {}) {
+    if (t < t0) return null;
+    const t1 = o.t1 ?? Infinity, out = t > t1 ? clamp((t - t1) / .25) : 0;
+    if (out >= 1) return null;
+    const k = backOut(clamp((t - t0) / .28)), font = (o.font || '{size}px "Anton", "Impact", sans-serif');
+    const sc = (o.exit === 'fade' ? 1 : 1 + .4 * out) * k, alpha = 1 - out;
+    const rot = (o.rot ?? -.04) + .02 * Math.sin((t - t0) * 3);
+    letter(txt, x, y, size * sc, o.color || '#E8508C', { font: font.replace('{size}', size * sc), stroke: o.stroke || PAL.ink, shadow: o.shadow || '#1E2A6A', shadowK: .06, rot, alpha });
+    if (o.sub) letter(o.sub, x - size * .1, y - size * .78 * sc, size * .32 * sc, o.subColor || '#F6C445', { font: font.replace('{size}', size * .32 * sc), stroke: o.stroke || PAL.ink, rot: rot - .02, alpha });
+    return { x, y, size: size * sc };
+  };
+  // An editorial callout: a small tilted sticker with a jargon tag or a number, popped in at t0 (a label, not narration).
+  window.tag = function(txt, x, y, t, t0, o = {}) {
+    if (t < t0 || t > (o.t1 ?? Infinity)) return;
+    const k = backOut(clamp((t - t0) / .22)), size = (o.size || 40) * k, rot = o.rot ?? -.05;
+    const font = `${Math.round(size)}px "Anton", "Impact", sans-serif`;
+    outX.save(); outX.font = font; const w = outX.measureText(txt).width; outX.restore();
+    boilSeed('tag' + txt);
+    push(); translate(x, y); rotate(rot);
+    paint(rectPts(-w / 2 - size * .3, -size * .62, w + size * .6, size * 1.24), { wash: o.bg || '#E8508C', ink: PAL.ink, sw: 1.2 });
+    pop();
+    letter(txt, x, y + size * .04, size, o.color || PAL.cream, { font, rot, ink: false });
   };
 
   // A character hopping from word to word, landing on each one as it is sung. Returns { x, y, air, k } for the feet;

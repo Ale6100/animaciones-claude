@@ -99,6 +99,72 @@ function person(x, y, u, t, o = {}) {
   return { handL: world(hL), handR: world(hR) };
 }
 
+// Scientist: an original young AI researcher (lab coat with pens in the pocket, wild hair, big round glasses) to cast
+// as the human who sings to the machine. (x, y) = ground point between the feet, u = size unit (~10u tall).
+// o: { aL, aR (arm angles: 0 = down, 1.6 = straight out, 3 = up), walk (leg phase), sq, rot, flip, look (-1..1),
+//      mood: neutral|happy|surprised|scared|sad|determined, sing 0..1 (mouth open), glow 0..1 (the glasses light up red),
+//      sweat 0..1, hair, coat, key }. Returns { handL, handR, head } in world space.
+function scientist(x, y, u, t, o = {}) {
+  const sq = o.sq || 0, dir = o.flip ? -1 : 1, coat = o.coat || '#F4EEE6', hair = o.hair || '#E8733A', skin = '#F2C9A0';
+  const sw = clamp(u / 11, .7, 2.4), mood = o.mood || 'neutral', blink = frac(t * .27 + (o.seed || 0)) < .035, legPh = o.walk ?? null;
+  const hipY = -3.8 * u, shY = -6.9 * u, headY = -8.5 * u;
+  boilSeed('sci ' + (o.key || 0));
+  push(); translate(x, y); rotate(o.rot || 0); scale(dir * (1 + sq * .5), 1 - sq);
+  for (const s of [-1, 1]) {
+    const k = legPh == null ? 0 : Math.sin((legPh + (s > 0 ? .5 : 0)) * TAU) * .5;
+    paint(ribbon([[s * .7 * u, hipY], [s * .75 * u + k * 1.3 * u, -1.8 * u], [s * .8 * u + k * 1.8 * u, -.2 * u]], .75 * u, .6 * u), { wash: '#2E3558', ink: PAL.ink, sw });
+    celFill(ellPts(s * .8 * u + k * 1.8 * u + .45 * u, -.25 * u, .85 * u, .38 * u, 12), { col: '#3A2A2E', sw: sw * .8 });
+  }
+  // the lab coat: a trapezoid with lapels, a pocket with pens, and a hem that swings
+  const swing = .25 * u * Math.sin(t * 3.1);
+  celFill([[-1.5 * u, shY], [1.5 * u, shY], [2.2 * u + swing, -2.5 * u], [-2.2 * u + swing, -2.5 * u]], { col: coat, shade: '#C9C2D6', sw });
+  paint([[-.55 * u, shY], [0, shY + 2.6 * u], [.55 * u, shY]], { wash: '#5A7AD8', ink: PAL.ink, sw: sw * .8 });
+  inkLine([[-.55 * u, shY], [-.9 * u, shY + 1.7 * u], [-.2 * u, shY + 1.4 * u]], sw * .8, PAL.ink, 'ink', .3);
+  inkLine([[.55 * u, shY], [.9 * u, shY + 1.7 * u], [.2 * u, shY + 1.4 * u]], sw * .8, PAL.ink, 'ink', .3);
+  inkLine([[0, shY + 2.6 * u], [swing * .4, -2.5 * u]], sw * .6, '#B8B0C8', 'inkfine', 0);
+  paint(rectPts(.7 * u, shY + 2 * u, .9 * u, .8 * u), { wash: coat, ink: PAL.ink, sw: sw * .6 });
+  [['#E0483B', .85], ['#3A6ED8', 1.1], ['#F6C445', 1.35]].forEach(([c, px]) => paint(rectPts(px * u, shY + 1.7 * u, .14 * u, .5 * u), { wash: c, ink: null }));
+  // arms: sleeves as ribbons, hands as mitts
+  const hand = (s, a) => [s * 1.6 * u + Math.sin(a) * s * 2.9 * u, shY + .3 * u + Math.cos(a) * 2.9 * u];
+  const hL = hand(-1, o.aL ?? .12), hR = hand(1, o.aR ?? .12);
+  for (const [s, h] of [[-1, hL], [1, hR]]) {
+    const el = [(s * 1.5 * u + h[0]) / 2 + s * .25 * u, (shY + h[1]) / 2 + .35 * u];
+    paint(ribbon([[s * 1.3 * u, shY + .2 * u], el, h], .8 * u, .6 * u), { wash: coat, ink: PAL.ink, sw });
+    celFill(ellPts(h[0], h[1], .5 * u, .5 * u, 12), { col: skin, sw: sw * .8 });
+  }
+  // head, ears, wild hair
+  paint(rectPts(-.4 * u, headY + 1.2 * u, .8 * u, .6 * u), { wash: skin, ink: PAL.ink, sw: sw * .7 });
+  for (const s of [-1, 1]) celFill(ellPts(s * 1.55 * u, headY + .15 * u, .35 * u, .45 * u, 10), { col: skin, sw: sw * .7 });
+  celFill(ellPts(0, headY, 1.6 * u, 1.7 * u, 24), { col: skin, sw, hi: .5 });
+  const H = [...Array(15)].map((_, i) => { const a = Math.PI * (1.02 + i / 14 * .96), r = (i % 2 ? 1.9 : 2.5) * u + .12 * u * Math.sin(t * 2 + i); return [Math.cos(a) * r * 1.05, headY - .35 * u + Math.sin(a) * r]; });
+  celFill([[-1.7 * u, headY + .2 * u], ...H, [1.7 * u, headY + .2 * u], [1.2 * u, headY - .6 * u], [-.2 * u, headY - .9 * u], [-1.2 * u, headY - .5 * u]], { col: hair, shade: mixCol(hair, '#5A1E2E', .45), sw, curv: .3 });
+  for (let i = 0; i < 4; i++) inkLine([[(-1 + i * .6) * u, headY - 1.6 * u], [(-.8 + i * .6) * u, headY - 1.1 * u]], sw * .7, mixCol(hair, '#5A1E2E', .5), 'inkfine', .5);
+  // brows, eyes behind big round glasses, mouth
+  const lx = (o.look || 0) * .3 * u, browUp = { surprised: .3, scared: .35, sad: .15, determined: -.15, happy: .1 }[mood] || 0;
+  for (const s of [-1, 1]) {
+    const ex = s * .62 * u + lx, ey = headY + .15 * u;
+    inkLine([[ex - .35 * u, ey - (.75 + browUp) * u + (mood === 'determined' ? s * -.12 * u : 0)], [ex + .35 * u, ey - (.8 + browUp) * u + (mood === 'sad' ? s * .12 * u : 0)]], sw * 1.3, PAL.ink, 'ink', .3);
+    if (blink || mood === 'happy') inkLine([[ex - .2 * u, ey], [ex, ey - .14 * u], [ex + .2 * u, ey]], sw, PAL.ink, 'inkfine', .5);
+    else { paint(ellPts(ex, ey, .2 * u, (mood === 'surprised' || mood === 'scared' ? .3 : .24) * u, 10), { wash: PAL.cream, ink: null }); paint(ellPts(ex + lx * .3, ey + .02 * u, .11 * u, .13 * u, 8), { wash: PAL.ink, ink: null }); }
+  }
+  const gl = clamp(o.glow || 0);
+  if (gl > .02) for (const s of [-1, 1]) glow(s * .62 * u + lx, headY + .15 * u, 1.6 * u * gl, '#FF3B3B', .8 * gl);
+  for (const s of [-1, 1]) paint(ellPts(s * .62 * u + lx, headY + .15 * u, .52 * u, .5 * u, 18), { wash: gl > .02 ? mixCol('#BFE8FF', '#FF4A5A', gl) : undefined, washOp: gl > .02 ? 170 * gl : undefined, ink: PAL.ink, sw: sw * 1.1 });
+  inkLine([[-.12 * u + lx, headY + .1 * u], [.12 * u + lx, headY + .1 * u]], sw, PAL.ink, 'ink', 0);
+  for (const s of [-1, 1]) paint(ellPts(s * .5 * u + lx, headY - .05 * u, .1 * u, .06 * u, 8, 0, -.5), { wash: '#FFFFFF', ink: null });
+  const my = headY + .95 * u, op = clamp(o.sing || 0);
+  if (op > .05 || mood === 'surprised' || mood === 'scared') {
+    const h = Math.max(op, mood === 'surprised' || mood === 'scared' ? .5 : 0);
+    paint(ellPts(lx, my + .05 * u, .36 * u, (.1 + .32 * h) * u, 14), { wash: '#6A1E2E', ink: PAL.ink, sw: sw * .8 });
+    if (h > .35) paint(ellPts(lx, my + (.05 + .2 * h) * u, .2 * u, .1 * u, 10), { wash: '#E27A92', ink: null });
+  } else if (mood === 'sad') inkLine([[lx - .35 * u, my + .12 * u], [lx, my - .06 * u], [lx + .35 * u, my + .12 * u]], sw, PAL.ink, 'inkfine', .5);
+  else inkLine([[lx - .38 * u, my - .06 * u], [lx, my + (mood === 'happy' ? .28 : .1) * u], [lx + .38 * u, my - .06 * u]], sw, PAL.ink, 'inkfine', .5);
+  if ((o.sweat || 0) > .05) { const k = backOut(clamp(o.sweat)); paint([[1.5 * u, headY - .9 * u], [1.75 * u, headY - .3 * u], [1.25 * u, headY - .3 * u]].map(([px, py]) => [1.5 * u + (px - 1.5 * u) * k, headY - .6 * u + (py + .6 * u - headY) * k]), { wash: '#8CD3F0', ink: PAL.ink, sw: sw * .6 }); }
+  pop();
+  const world = ([hx, hy]) => { const c = Math.cos(o.rot || 0), s = Math.sin(o.rot || 0), px = hx * dir * (1 + sq * .5), py = hy * (1 - sq); return [x + px * c - py * s, y + px * s + py * c]; };
+  return { handL: world(hL), handR: world(hR), head: world([0, headY]) };
+}
+
 // Serpent: a giant snake (one ribbon body, glowing eyes, fangs) rising from below its head point (hx, hy); s = head size.
 // rise 0..1 lifts it into view, rage 0..1 opens the jaws and flares a red glow.
 function serpent(t, hx, hy, s, rise, rage = 0, key = 'serpent') {
@@ -446,3 +512,12 @@ function shopkeeper(x, y, u, t, o = {}) {
   const world = ([hx, hy]) => { const c = Math.cos(o.rot || 0), s = Math.sin(o.rot || 0), px = hx * dir * (1 + sq * .5), py = hy * (1 - sq); return [x + px * c - py * s, y + (o.dy || 0) * u + px * s + py * c]; };
   return { handL: world([hl[0] * u, hl[1] * u]), handR: world([hr[0] * u, hr[1] * u]), head: world([0, headY]), cord: cord && world(cord) };
 }
+
+// Key poses for act() (src/motion.js): scientist(x, y, u, t, { ...act(t, keys, SCI_POSES) }). Arms: 0 = down, 1.6 = out, 3 = up.
+const SCI_POSES = {
+  rest: { aL: .15, aR: .15, rot: 0, sq: 0 },
+  point: { aR: 1.65, aL: .1, rot: .07 }, cheer: { aL: 2.9, aR: 2.9, sq: -.06 }, shrug: { aL: 1.15, aR: 1.15, sq: .08 },
+  facepalm: { aR: 2.55, aL: .2, rot: .06 }, panic: { aL: 2.95, aR: 2.95, sq: -.08, rot: -.05 }, recoil: { aL: 1.35, aR: 1.35, rot: -.2, sq: .05 },
+  plead: { aL: 2.2, aR: 2.2, sq: .22, rot: .16 }, think: { aR: 2.35, aL: .3 }, lean: { rot: .16, aR: .7 }, slump: { sq: .12, rot: .09, aL: 0, aR: 0 },
+  present: { aR: 2.05, aL: .2 }, cower: { sq: .3, aL: 2.6, aR: 2.6, rot: .12 }, type: { aL: 1.2, aR: 1.2, rot: .08 },
+};

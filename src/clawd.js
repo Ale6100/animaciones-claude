@@ -646,3 +646,14 @@ function move(style, t, seed = 0) {
   return o;
 }
 function dancer(x, y, u, style, t, extra = {}) { clawd(x, y, u, { ...move(style, t, extra.seed || 0), ...extra }); }
+
+// Key poses for act() (src/motion.js): clawd(x, y, u, { ...feel(mood, t), ...act(t, keys, CLAWD_POSES) }).
+// Arms: 0 = straight out, + up, - down. Facing right, aR is the arm nearest the camera.
+const CLAWD_POSES = {
+  rest: { aL: .2, aR: .2, dy: 0, sq: 0, rot: 0, dx: 0 },
+  point: { aR: 0, aL: -.4, rot: .1, dx: .3 }, present: { aR: .6, aL: .6, dy: -.3 }, cheer: { aL: 1.45, aR: 1.45, dy: -1.4, sq: -.12 },
+  shrug: { aL: .7, aR: .7, sq: .12, dy: .2 }, think: { aR: 1.2, aL: -.3, rot: -.06 }, panic: { aL: 1.5, aR: 1.5, dy: -.7, sq: -.15, rot: .06 },
+  recoil: { aL: .9, aR: .9, rot: -.22, dx: -.8, sq: .12 }, lean: { rot: .2, dx: .5, aR: .4, aL: -.2 }, crouch: { sq: .32, dy: .3, aL: -.5, aR: -.5 },
+  hop: { dy: -2.4, sq: -.16, aL: 1.1, aR: 1.1 }, bow: { rot: .42, dy: .6, aL: -.7, aR: -.7 }, power: { aL: 1.15, aR: 1.15, sq: -.06, dy: -.4 },
+  wave: { aR: 1.35, aL: .1 }, slump: { sq: .16, dy: .4, rot: -.07, aL: -.9, aR: -.9 }, proud: { rot: -.08, dy: -.3, aL: -.35, aR: -.35, sq: -.08 },
+};

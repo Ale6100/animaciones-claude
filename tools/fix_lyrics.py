@@ -2,11 +2,16 @@
 
 Usage:
     python tools/fix_lyrics.py projects/my_video.lyrics.js corrected.txt
+    python tools/fix_lyrics.py projects/my_video.lyrics.js lyrics.txt --relines
 
 corrected.txt has one line per transcribed line, as `<start time> | <corrected text>` (the start times printed by the
 transcription, so each correction lands on its line). Words that still match keep their exact timing, and so do
 words swapped one for one; when a correction has more or fewer words than what it replaces, the new words share
 that time span, split by length. Lines not listed are kept.
+
+--relines takes the whole lyrics instead, as plain text with one sung line per text line (no times): the words are
+aligned against the full transcription and regrouped into those lines, so the lines follow the lyrics and not the
+transcription's breaks (it often merges a verse into one line or splits a line in the middle).
 """
 import difflib
 import json
@@ -54,16 +59,17 @@ def retime(old, new_words):
     return out
 
 
-def main():
-    if len(sys.argv) != 3:
-        print(__doc__)
-        sys.exit(1)
-    script, fixes = sys.argv[1], sys.argv[2]
-    src = open(script, encoding="utf-8").read()
-    m = re.search(r"registerLyrics\((\"[^\"]+\"), (.*)\);\s*$", src, re.S)
-    if not m:
-        sys.exit(f"{script}: no registerLyrics(...) call found")
-    lyric_id, lines = m.group(1), json.loads(m.group(2))
+def relines(lines, lyric_lines):
+    new_words = [(i, w) for i, words in enumerate(lyric_lines) for w in words]
+    timed = retime([w for line in lines for w in line["words"]], [w for _, w in new_words])
+    grouped = [[] for _ in lyric_lines]
+    for (i, _), word in zip(new_words, timed):
+        grouped[i].append(word)
+    return [{"t0": words[0][0], "t1": words[-1][1], "words": words} for words in grouped]
+
+
+def apply_corrections(lines, fixes):
+    """Applies `<start time> | <text>` corrections in place; returns how many lines changed."""
     corrections = {}
     for raw in open(fixes, encoding="utf-8"):
         if "|" in raw:
@@ -83,10 +89,29 @@ def main():
         changed += before != new
     if corrections:
         sys.exit(f"no transcribed line starts at: {', '.join(str(t) for t in corrections)}")
+    return changed
+
+
+def main():
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if len(args) != 2:
+        print(__doc__)
+        sys.exit(1)
+    script, fixes = args
+    src = open(script, encoding="utf-8").read()
+    m = re.search(r"registerLyrics\((\"[^\"]+\"), (.*)\);\s*$", src, re.S)
+    if not m:
+        sys.exit(f"{script}: no registerLyrics(...) call found")
+    lyric_id, lines = m.group(1), json.loads(m.group(2))
+    if "--relines" in sys.argv:
+        lines = relines(lines, [raw.split() for raw in open(fixes, encoding="utf-8") if raw.strip()])
+        summary = f"{len(lines)} lines from {os.path.basename(fixes)}"
+    else:
+        summary = f"{apply_corrections(lines, fixes)} lines corrected"
     header = src[:m.start()]
     with open(script, "w", encoding="utf-8") as f:
         f.write(header + f"registerLyrics({lyric_id}, {json.dumps(lines, ensure_ascii=False, indent=1)});\n")
-    print(f"{os.path.basename(script)}: {changed} lines corrected")
+    print(f"{os.path.basename(script)}: {summary}")
 
 
 if __name__ == "__main__":

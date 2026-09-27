@@ -1,6 +1,6 @@
 # Claude Animation & Music Video Studio
 
-An end-to-end toolkit and starter base for generating hand-drawn animations and **animated music videos** with Clawd, in any look (watercolor, flat cartoon, motion graphics or one invented for the video), inspired by [John Heibel's PDoomVideo](https://github.com/JohnHeibel/PDoomVideo) and [ClaudeAnimationBase](https://github.com/JohnHeibel/ClaudeAnimationBase).
+An end-to-end toolkit and starter base for generating hand-drawn animations and **animated music videos** with Clawd, in any look (watercolor, flat cartoon, motion graphics, risograph print or one invented for the video), inspired by [John Heibel's PDoomVideo](https://github.com/JohnHeibel/PDoomVideo) and [ClaudeAnimationBase](https://github.com/JohnHeibel/ClaudeAnimationBase).
 
 Featuring an interactive browser studio with **real-time audio playback**, a **karaoke subtitle engine** with dynamic word-by-word gold highlighting, procedural music synthesis with Python, and high-definition offline rendering with headless Chrome + WebGL + FFmpeg.
 
@@ -17,7 +17,7 @@ Featuring an interactive browser studio with **real-time audio playback**, a **k
 2. **Physical Lyrics**:
    - Word-level timings from the song ([`tools/sync_lyrics.py`](tools/sync_lyrics.py)); each word lands on screen as it is sung and reacts to the characters (see *The Adaptive Music Video*).
    - Optional karaoke pill ([`src/lyrics.js`](src/lyrics.js)) that highlights each word in gold (`PAL.ochre`) as it is sung.
-3. **Interchangeable looks**: how shapes and lines render (motion graphics, flat vector cartoon, watercolor, or a new one) is a layer of its own, chosen per scene, so the project isn't tied to one style. Every kind of video starts from motion graphics full of literal and ambient details, and moves away from it when its context calls for something else (`ANIMATION_GUIDE.md`, rule 1). The flat look also serves as a fast draft preview for iterating on motion (see `ANIMATION_GUIDE.md`, Looks).
+3. **Interchangeable looks**: how shapes and lines render (motion graphics, flat vector cartoon, watercolor, risograph print, or a new one) is a layer of its own, chosen per scene, so the project isn't tied to one style. Every kind of video starts from motion graphics full of literal and ambient details, and moves away from it when its context calls for something else (`ANIMATION_GUIDE.md`, rule 1). The flat look also serves as a fast draft preview for iterating on motion (see `ANIMATION_GUIDE.md`, Looks).
 4. **Clean Generator Architecture**:
    - Each scene renders its frames into its own `out/frames/<scene>/` (resumable: an interrupted render continues where it stopped, and frames lost to GPU or memory pressure are retried or left for the next run of the same command). `.gitignore` is pre-configured so that generated video outputs (`out/`, `*.mp4`, rendered frames), custom audio tracks, and project-specific storyboards are never committed to your repository.
 
@@ -136,6 +136,10 @@ Creating a music video on **any topic** without cluttering the repository takes 
      ```bash
      python tools/fix_lyrics.py projects/my_video.lyrics.js corrected.txt
      ```
+     With the whole lyrics as plain text (one sung line per text line), `--relines` aligns them against the full transcription and regroups the words into those lines, which fixes lines the transcription merged or split. To combine a provided lyrics sheet with your own transcription, transcribe without `--prompt-file` (so the lyrics don't bias what is heard), compare both line by line, keep in the text file whichever version makes more sense for each line, and apply it with `--relines`:
+     ```bash
+     python tools/fix_lyrics.py projects/my_video.lyrics.js lyrics.txt --relines
+     ```
 
 2. **Create a Self-Contained Scene File**:
    - Create your scene script in `projects/my_video.js` (or `src/scenes/my_video.js`). Because `projects/` is in `.gitignore`, your custom production files will never pollute the repository!
@@ -195,13 +199,13 @@ Creating a music video on **any topic** without cluttering the repository takes 
 | [`src/comedy.js`](src/comedy.js) | Literal-comedy helpers: when a word is said, pop-ins, abrupt changes, absurd growth, freezes |
 | [`src/fx.js`](src/fx.js) | Shared library of painted backgrounds, effects and props promoted from earlier videos |
 | [`src/styles.js`](src/styles.js) | Mood presets and their per-section blending and beat-locked camera energy |
-| [`src/core.js`](src/core.js) | Rendering engine and its looks (motion graphics by default, watercolor, flat), p5.brush setup, camera, dynamic rhythm state, and paper shaders |
+| [`src/core.js`](src/core.js) | Rendering engine and its looks (motion graphics by default, watercolor, flat, print), p5.brush setup, camera, dynamic rhythm state, and paper shaders |
 | [`src/clawd.js`](src/clawd.js) | Clawd character rig: views, limbs, emotes, eyes, and procedural kinematics |
 | [`src/motion.js`](src/motion.js) | Motion-graphics kit: easing, cascades, draw-on lines, shape morphs, masks, kinetic type |
 | [`src/scenes/`](src/scenes/) | Built-in example scenes (`demo.js`, `claude_pop.js`, `showcase.js`, `literal.js`, `motiongfx.js`) |
 | [`projects/`](projects/) | Git-ignored directory for custom user videos and song scenes |
 | [`audio/`](audio/) | Tracks of the versioned scenes (e.g. `claude_pop`), git-ignored; one-off videos keep their audio in `projects/` |
-| [`tools/`](tools/) | Helper utilities: [`analyze_audio.py`](tools/analyze_audio.py) measures a song's beat grid, energy per bar and sections (needs `ffmpeg` and `numpy`); [`sync_lyrics.py`](tools/sync_lyrics.py) transcribes word-level lyric timings (needs `faster-whisper`); [`fix_lyrics.py`](tools/fix_lyrics.py) puts corrected lyrics onto those timings; [`make_bed.py`](tools/make_bed.py) builds an instrumental bed (around a drop, or a calm loop) and mixes a voice over it, with the drum and synth voices of [`synth.py`](tools/synth.py); [`narrate.py`](tools/narrate.py) speaks a script with word timings (needs `edge-tts`); [`audio_envelope.py`](tools/audio_envelope.py) writes a loudness envelope for audio-reactive visuals (`envelopeAt`) |
+| [`tools/`](tools/) | Helper utilities: [`analyze_audio.py`](tools/analyze_audio.py) measures a song's beat grid, energy per bar and sections (needs `ffmpeg` and `numpy`); [`sync_lyrics.py`](tools/sync_lyrics.py) transcribes word-level lyric timings (needs `faster-whisper`); [`fix_lyrics.py`](tools/fix_lyrics.py) puts corrected lyrics onto those timings; [`make_bed.py`](tools/make_bed.py) builds an instrumental bed (around a drop, or a calm loop) and mixes a voice over it, with the drum and synth voices of [`synth.py`](tools/synth.py); [`narrate.py`](tools/narrate.py) speaks a script with word timings (needs `edge-tts`); [`audio_envelope.py`](tools/audio_envelope.py) writes a loudness envelope for audio-reactive visuals (`envelopeAt`); [`ref_sheet.py`](tools/ref_sheet.py) studies a reference video (contact sheets, strips of a moment, its cuts and shot lengths in beats) |
 | [`ANIMATION_GUIDE.md`](ANIMATION_GUIDE.md) | Style guide and complete API reference |
 
 ---

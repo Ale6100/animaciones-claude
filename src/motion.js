@@ -112,3 +112,30 @@ function motionText(txt, x, y, t, t0, o = {}) {
   if (style === 'type' && frac(t * 1.6) < .55 && out < .5) { const n = clamp(Math.floor((t - t0) / gap) + 1, 0, txt.length), tx = (align === 'center' ? x - total / 2 : x) + widths.slice(0, n).reduce((a, b) => a + b, 0); paint(rectPts(tx + 6, y - size * .45, size * .08, size * .9), { wash: col, ink: null }); }
   return total;
 }
+
+// ---------- acting ----------
+// Key poses from a pose table, the way limited animation acts: each pose is reached in `snap` seconds with overshoot,
+// held, and left with a small anticipation the other way just before the next one. keys: [[t, name, override], ...].
+// Numbers are blended, anything else switches halfway; spread the result into the character's options.
+function act(t, keys, table, { snap = .16, lead = .07, drift = .05 } = {}) {
+  let i = 0; while (i + 1 < keys.length && t >= keys[i + 1][0]) i++;
+  const pose = k => ({ ...(table.rest || {}), ...(table[k[1]] || {}), ...(k[2] || {}) });
+  const cur = pose(keys[i]), out = { ...cur }, k = i > 0 ? backOut(clamp((t - keys[i][0]) / snap)) : 1;
+  const prev = i > 0 ? pose(keys[i - 1]) : cur, next = i + 1 < keys.length ? pose(keys[i + 1]) : null;
+  const pre = next ? ease(clamp(1 - (keys[i + 1][0] - t) / lead)) : 0;
+  for (const f of Object.keys(cur)) {
+    if (typeof cur[f] !== 'number') { if (k < .5 && prev[f] !== undefined) out[f] = prev[f]; continue; }
+    const a = typeof prev[f] === 'number' ? prev[f] : cur[f];
+    out[f] = lerp(a, cur[f], k) + (next && typeof next[f] === 'number' ? (cur[f] - next[f]) * .18 * pre : 0);
+  }
+  if (typeof out.aL === 'number') out.aL += drift * Math.sin(t * 3.1);
+  if (typeof out.aR === 'number') out.aR += drift * Math.sin(t * 2.7 + 1);
+  return out;
+}
+// Keys that change pose every `every` seconds from t0 to t1, walking through `names` in a shuffled but stable order:
+// a background actor that never freezes. Mix with hand-placed keys for the moments that matter.
+function beatKeys(t0, t1, names, every, seed = 0) {
+  const keys = [];
+  for (let i = 0, t = t0; t < t1; i++, t += every) keys.push([t, names[Math.floor(hash(i * 7.3 + seed) * names.length)]]);
+  return keys;
+}

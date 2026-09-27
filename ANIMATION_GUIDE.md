@@ -23,7 +23,7 @@ Look at the model sheets first:
 Every video follows one paradigm, the **adaptive music video** (see the README): the song decides the tone, section by section, and the lyrics are physical objects in the scene.
 
 1. **Read the song.** Run `tools/analyze_audio.py` for the beat grid and the energy per bar, and `tools/sync_lyrics.py` for word timings. Listen to the genre and read the lyrics' themes. If there is no audio, generate it (see Music).
-2. **Mine the references.** Before any story, build a reference bank from the song (rule 8): for each section, what the lyrics name, the culture they come from (its jargon, famous objects, history, memes, in-jokes) and the visual puns hidden in the words.
+2. **Mine the references.** If the person points to a video they like, get the file and study it with `tools/ref_sheet.py`: `--cuts --bpm=` first for the pacing, then sheets at one frame per second (the default: a video that cuts every 1.2 s sampled every 2 s loses half its shots, and several references are only comparable at the same rate; pass `--song=<length>` when a re-upload is sped up, so every stamp is in song time), strips of the key moments for the motion. A reference teaches principles, never content. Take how it paces, frames, escalates and researches, and invent your own images and gags: when a reference already did an idea (the same pun, set or device), find another reading of the line. Then, before any story, build a reference bank from the song (rule 8): for each section, what the lyrics name, the culture they come from (its jargon, famous objects, history, memes, in-jokes) and the visual puns hidden in the words. Look up every proper name before drawing it: in a song from a niche culture a name is usually an in-joke of that field, and the in-joke beats the literal reading (in an AI-safety song, "Sydney" is a chatbot persona that declared its love to a user and "Gato" is an AI model, not the Opera House or a cat). Then cast from the lyrics: who sings to whom, and what the song is about. The lead is whoever the song is about, it is big in the frame, and it becomes what each section names (a costume or a transformation per section), while the singer reacts.
 3. **Choose moods per section.** A calm verse and an explosive chorus in the same song get different moods. `src/styles.js` has presets (energetic, narrative, calm, epic, comedy) as a starting point: override any value, mix them, invent transitions that aren't listed, and add a new mood whenever the song needs one. They are ideas, never rules.
 4. **Keep the story a surprise.** The story, the gags and the twists are yours to improvise: the person should discover them when they watch the video. Don't pitch the plot. Ask only what you can't decide for them and that doesn't spoil anything (music under a voice or not, length, overall energy, anything their audio leaves open), in a couple of short questions, with "surprise me" as a valid answer. Look, style and technique are never questions: they're yours to decide (and to mix).
 5. **Wait for their answers**, then storyboard and build.
@@ -68,6 +68,9 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 - **A sign that repeats the story is the classic failure.** If Clawd holds a sign saying "I'm lost", the shot has failed. Show Clawd being lost: looking left, then right, the map upside down, a sweat drop.
 - If the prompt truly needs a word (a name, a shop sign that is the joke), use `letter()`. Paint it into the scene, keep it to one or two words and use it once.
 - **Diegetic marks are set dressing, not text.** When a reference is itself written in the real world (a command prompt, an error code, a keycap, a jersey number, a chemical formula), a small mark painted on the object is part of the world (rule 8). It stays small and secondary and never tells the story: the moment it explains what's happening, it's a caption.
+- **Poster type and editorial tags are graphic design, not captions.** In the graphic looks (motion, print) a hook can become one huge word that is the image of the shot, and the word itself can act (`heroWord()`: LOSS with an arrow falling through its O, FREE behind a character in a cage), and small tilted tags can riff on the jargon of the line being sung with a number or a term (`tag()`: "×52", "OUT OF OFFICE", "1e30 FLOP/s"). They decorate the moment the song is already naming. They never explain the story or say what a character feels.
+- **Type can be a whole shot.** On a hook, set the words on a flat colour letter by letter as they are sung, filling the frame, then smash cut to the image with the finished word still in it. Mixing a condensed sans with a serif for a quoted slogan keeps the type lively.
+- **Comic onomatopoeia on the actions** (`sfx()`: CHOMP!, SKRRT! on the sharp turn, SLAM! on the door, THUNK!) belongs to the same graphic language. A tag that counts during a tension beat works as a small meter for that scene: the grip on "don't let me go" drops 100% → 75% → 50% → 0%.
 
 ### 3. Something happens in every scene
 
@@ -75,6 +78,7 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 - **One focal action at a time.** Stage it with a clear silhouette and nothing competing for attention, so it reads at a glance. The details of rule 8 surround it without competing.
 - **Cause, then reaction.** When something happens, Clawd reacts to it: a take, an emotion change, a turn toward it. The reaction is often the funniest part, so give it time.
 - **Pay it off.** Whatever you set up in a shot (a door, a sandwich, a strange noise) gets resolved on screen, in that shot or a later one.
+- **Escalate a motif, and plant what comes later.** A gag that returns on every chorus and grows each time lands best when it finally breaks. For example, Clawd pumps up the P(doom) thermometer with a bicycle pump, and in the finale the pump inflates a red balloon until it pops. A setup can also foreshadow a later line: at "atoms rearranging" the researcher turns into a paperclip, two sections before "paperclips fill the room".
 
 ### 4. Timing: model the viewer
 
@@ -83,6 +87,7 @@ Timing turns a set of drawings into a story. It's also where generated animation
 You know what happens because you wrote the code. The viewer doesn't: they see it once, at full speed, for the first time. **For every moment, ask what the viewer needs to understand and how long that will take them, and time it for that.**
 
 - **Energy sections.** In energetic moods the beat sets the pace (a cut, camera punch or new move every 1–2 bars, every 2 beats in a chorus). The rules below still hold for the story reads inside them: a key moment still needs time to land.
+- **A new picture for every line.** In a music video the cut is the pulse. Two strong videos of the same song, measured with `tools/ref_sheet.py --cuts`, cut every 1.3 s and every 2.8 s of song (median shot), so every sung line, and often every half line, gets its own image. A camera that glides through one set for a whole verse reads as slow, however much happens in it. Move the camera inside a shot and cut between ideas, on the beat. Some cuts can match (the jaws that end one shot are the teeth that open the next) and some can be pure type.
 - **Write the reads.** For each shot, list in order what the viewer has to understand. Each item is a *read*. Every read needs time for the eye to find it, time to understand it, and a moment to register before the next thing starts. Small, distant, fast or subtle things take longer to find and understand than big, central, obvious ones.
 - **One read at a time.** Don't start a new read while the viewer is still taking in the last one. When two things happen at once, the viewer sees only one of them. Put a cause and its reaction in sequence, not on top of each other.
 - **Fast actions, slow meanings.** A motion can be very quick if it's anticipated, but what it means needs held time. Anticipation tells the viewer where to look before the action, and the hold after it lets them understand it. Move quickly through what doesn't matter to the story, and spend time on what does. That contrast between quick and held is what gives a film rhythm; one constant speed, fast or slow, makes it flat and hard to follow.
@@ -93,11 +98,14 @@ For a worked example, see how the demo times its ending, at the end of this guid
 
 ### 5. Alive
 
+- **A new pose every half second or so.** In a fast music video, key poses changing every two beats (`act()` with `beatKeys()`) and a punch-in cut inside long shots (the same framing, 1.3× closer, on the beat) keep every second different without drawing more. Hand-place the poses of the moments that carry the gag, and let the automatic ones fill the rest, mildly, on top of what the shot sets.
 - **Nothing is ever still.** Every emotion has its own idle motion (`feel()`), cameras drift or push, grass sways, stars twinkle and the linework boils. A frozen frame reads as a bug.
 - **Only the speaker's mouth moves.** A mouth moves only while its own character is talking; when the speaker is off screen (the other end of a phone call), nobody on screen moves their lips. Decide who says each line from what the dialogue means (on a phone call, whoever answers says the first "hola"), never by guessing or by the look of the transcription; grouping words by voice doesn't work when one actor plays several parts. If a line is ambiguous, ask.
+- **A music video doesn't need a singer on screen.** Nobody lip-syncs by default: the song can be the soundtrack of the characters' story. Show a singer only when the video calls for one.
 - **Faces act, they never snap.** Change moods with `emotions()`. It does anticipation, a squint, a take and overshoot around every change. Never swap `eyes`/`mouth` by hand between two frames.
 - **Move like a cartoon, not a machine.** Every move follows the animation principles in the next section.
 - **Clawd is big.** In a medium shot, `u` is about 20–28 (Clawd is 10u wide, 8u tall). In a close-up it's 40–70. Tiny Clawds (u < 12) are for wide establishing shots only, and never for the whole video.
+- **Vary the shot size like a film.** Mix extreme close-ups (an eye filling the frame, a mouth), close-ups, medium shots and wides, and change the angle. A whole video at one medium framing and one camera height feels flat. The lead can also multiply: a row of clones as the backing dancers, the audience or a whole workforce is a quick visual joke.
 - **Everything moves on a beat.** `PROJECT.bpm` drives every idle, bounce and dance, so the whole film shares one pulse. Put the hits on beats (`pulse()`, `beatN()`), even with no music.
 
 ### 6. Transitions always
@@ -120,6 +128,8 @@ For a worked example, see how the demo times its ending, at the end of this guid
 - **One world.** Pick a palette and a setting that carries through, with a colour arc across the video (e.g. cold night → warm dawn as Clawd's mood lifts).
 - **One thread.** The story has a beginning, a middle and an end, and Clawd's emotional arc follows it. Plan the emotion keys across the whole video, not per shot.
 - **Rhyme the ending with the opening:** the same place, pose or motif, changed. It makes the film feel whole.
+- **A home base for the chorus.** Coming back to the same place on every chorus (a stage with its thermometer and its audience) gives the song a structure the viewer feels. The verses travel, the choruses come home, and each return is a little more extreme. A bookend can also carry a measure that changed: the same doodle at the start and at the end, with a number that has grown.
+- **A data spine and a recap.** A real measure that advances through the whole video ties the scenes into one story. For example: the length of task an AI can do on its own, from 6 seconds in 2019 to over 16 hours, plus a date stamp in a corner that moves forward. Near the climax, a rapid montage of callbacks (the key images of earlier lines, a frame each) makes the ending feel earned.
 - **Link scenes:** motion continues across cuts, and screen direction stays consistent (if Clawd travels right, keep travelling right). Props and characters carry over.
 
 ### 8. A world full of details
@@ -127,6 +137,16 @@ For a worked example, see how the demo times its ending, at the end of this guid
 Every video, by default, is packed with details that refer to what is shown and sung at that moment. The focal action carries the story; the details reward whoever looks again, pauses or rewatches. A bare background, or one that could belong to any song, is a wasted frame.
 
 - **Build a reference bank first** (Step 0). For each section, list what the lyrics name, the culture they come from (its jargon, famous objects, history, memes, in-jokes of the field) and the visual puns hidden in the words. Aim for several per section, more than you will use. Example, for a sailing song: a compass needle that follows the melody, knots tied like the letters of a flag signal, a message in a bottle drifting past, a gull stealing a sandwich at the edge of the frame, waves drawn as the staff of a sea shanty.
+- **Go one level deeper than the literal.** The strongest details are specific artefacts of the field with a double meaning, not a drawing of the word. Examples from a song about AI risk:
+- **Use the genre's own conventions and the field's discourse.** Frame the video the way its genre is framed. A K-pop song can introduce each character with an idol member card (NAME / aka / POSITION: the mask), use dance formations and kaleidoscope shots, and set a hook in several languages. Turn the field's charts into sets: a character walking along a line chart that goes vertical on "singularity", a fuse burning along an exponential curve. Quote the field's own sayings as tags ("stochastic parrot", "the bitter lesson", "we're so back", "it's never been so over") and its recent news (a famous open problem an AI just solved, a model copying its own weights).
+  - "without a single cdr" as a *Critical Design Review* form stamped NONE ON FILE;
+  - "super-dense" as a chinchilla holding a tungsten tile;
+  - "RLHF goes askew" as a flood of "You're absolutely right!";
+  - "masked pre-training" as "The cat sat on the [MASK]";
+  - "all the way" as the turtles all the way down;
+  - "what did Ilya see" as a door marked NDA.
+  
+  For every term, ask what someone in that field would picture, which acronyms hide a second meaning, and which recent news or meme it points to.
 - **Tie each detail to its moment.** A detail refers to what is happening or being sung right then, and the set dressing changes as the song moves on. When a word is sung, the world can answer it: a poster changes, a prop appears, a background character reacts (`cues()`). One static set for the whole video doesn't count.
 - **Fill every layer.** Foreground (things that cross in front of the camera), midground (props around the characters, the ground they stand on), background (walls, screens, skylines, sky), the lyrics themselves (a word can become the thing it names), and background characters living their own little stories in the corners.
 - **Details never steal the read.** They are smaller, lower in contrast or slower than the focal action, or they sit at the edges; the one that is the gag of the moment pops in on its beat or word and leaves the stage to the focal read. Rule 4 still decides where the eye goes: details are what it finds on the second look.
@@ -249,6 +269,10 @@ Fix what you find, then look again. **Budget:** at least one sheet per shot, a s
 
 ### 4. Render
 
+Run the render in the background, with its output in a log: it takes minutes and the conversation stays open meanwhile. `--encode` prints ffmpeg's progress with carriage returns, so `tail` of that log dumps the whole encode in one line; read it with `tr '
+' '
+' < log | tail -2`.
+
 First size the machine: `node render.mjs --probe --scene=my_video` (same `--script`, look and blur flags as the render). Render on the best GPU available (the probe warns when Chrome isn't using it) and with the number of `--workers` it recommends; aim high, and only step down if the GPU loses its context or memory runs short (the render resumes where it stopped).
 
 ```bash
@@ -278,6 +302,7 @@ Finish: `--blur=4` renders 4 subframes per frame and averages them (motion blur,
 | Gato | `src/characters.js` | a big tabby cat sitting, with a paw that reaches out to hold something. `gato(x, y, s, t, {paw, look, mood})`; returns `{paw}` |
 | Chinchilla | `src/characters.js` | a tiny fluffy rodent. `chinchilla(x, y, s, t, {sq, look, mood: calm|shock})` |
 | Shopkeeper | `src/characters.js` | a stocky counter worker (paper cap, moustache, apron) in simple rounded shapes, with floating hands (no arms, so poses never break) who acts through the brows. `shopkeeper(x, y, u, t, {mood, hL, hR, rotL, rotR, holdL, holdR, phone, flush, pale, beard, band, vein, twitch})`; `holdR: (x, y) => ...` draws what a hand holds, `shopkeeperMoods(t, keys)` acts mood changes like `emotions()`; returns `{handL, handR, head, cord}` |
+| Scientist | `src/characters.js` | a young researcher (lab coat with pens, wild hair, big round glasses), cel-shaded. `scientist(x, y, u, t, {aL, aR, walk, sq, rot, flip, look, mood, sing, glow, sweat, hair, coat})`; moods neutral, happy, surprised, scared, sad, determined; `sing` opens the mouth, `glow` lights the glasses red; returns `{handL, handR, head}` |
 
 ## Library
 
@@ -328,11 +353,15 @@ Painted pieces promoted from earlier videos, in `src/fx.js` (options go in a tra
 | `rotaryPhone(x, y, s, t, {dial, lifted, ring})`, `handset`, `handsetPts`, `coilCord(a, b, o)` | a rotary phone that can ring, its handset, and a coiled cord between any two points |
 | `notepad(x, y, w, h, t, {lines, mess, split})`, `pencil(x, y, s, rot, {broken})` | a spiral notepad being written on (returns the pencil point) and a pencil |
 | `clayOven(x, y, s, t, {fire})`, `tvSet(x, y, w, t, screen)` | a clay dome oven with a fire; an old TV whose picture is a callback |
+| `gridPaper(bg, line, o)`, `sunburst(cx, cy, t, cols, o)`, `screenTunnel(cx, cy, t, o)` | print-poster backgrounds: graph paper, turning rays, a tunnel of nested screens rushing outwards |
+| `splitFlap(x, y, text, t, {t0, from, cell, col, ink})` | an airport split-flap board whose cells flip one after another from the old text to the new one at t0 |
+| `thermometer(x, y, h, k, t, {label})`, `heartCage(x, y, s, open)`, `saxophone(x, y, s, rot)` | a thermometer whose mercury reads k as a percentage (above 1 it cracks and sprays); a heart-shaped bird cage; a saxophone |
+| `crown(x, y, s, o)`, `jaws(cx, cy, s, open, o)`, `audience(t, n, y, cols)` | a jewelled crown; cartoon jaws that open, and chomp over the whole frame when s grows past it; a row of audience silhouettes bobbing on the beat, some holding up phones |
 | `dryRun(fn)` (`src/core.js`) | runs a drawing function with painting disabled, to learn where something will be this frame (see "Frames are pure functions of time") |
 | `celFill(pts, {col, shade, hi, k, light})` (`src/core.js`) | a shape with cartoon cel shading: a shadow crescent away from the light, an optional highlight and the outline; no mask needed |
 | `CAM3`, `proj3(x, y, z, c)`, `grid3(t, o)`, `racks3(t, c)` | a small 3D perspective camera, a 3D grid floor, and server racks along a 3D corridor |
 
-Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `physicalLyrics()`, `hopAcross()`, `wordLetters()` and the camera directors (`src/kinetic.js`); `mathLine()` and `writeOn()` (formulas with superscripts, subscripts and ∑ limits, written on character by character), `subtitles()` (the current phrase with each word lighting up as it is said) and `mathFont()` (`src/kinetic.js`); `MOODS`, `moodAt()`, `beatCam()` (beat kicks, shake, and a new framing every `pace` bars) and `moodTime()` (drawings on twos when the mood asks for it) in `src/styles.js`.
+Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `physicalLyrics()`, `hopAcross()`, `wordLetters()` (both take a `font`, such as the condensed display face Anton, and a `shadow` ink) and the camera directors (`src/kinetic.js`); `heroWord()` (one huge poster word slammed in on its beat) and `tag()` (an editorial sticker) in `src/kinetic.js`; `mathLine()` and `writeOn()` (formulas with superscripts, subscripts and ∑ limits, written on character by character), `subtitles()` (the current phrase with each word lighting up as it is said) and `mathFont()` (`src/kinetic.js`); `MOODS`, `moodAt()`, `beatCam()` (beat kicks, shake, and a new framing every `pace` bars) and `moodTime()` (drawings on twos when the mood asks for it) in `src/styles.js`.
 
 **Render cost:** watercolour `fill`s and `glow()`s are what make frames slow. Big flat areas (skies, floors) render fast with `wash`; keep fills for the few shapes that show the texture, and use `spark(..., {lite: true})` when dozens are on screen.
 
@@ -384,6 +413,7 @@ A look is how the drawing calls render; scenes, characters and props stay the sa
 | `watercolor` | p5.brush pigment: bleeding fills, boiling tapered ink, paper texture and grain. About 1–5 s a frame |
 | `flat` | a clean vector cartoon: solid fills, even outlines, plain background. About 0.05 s a frame, so it is also the draft preview (`--draft`) |
 | `motion` (default) | motion graphics: crisp vector with perfectly still lines (no boil) on a dark ground. Pairs with the motion-graphics kit below |
+| `print` | a risograph / screen print: flat inks on cream paper, the whole frame printed twice slightly off register, under a dot screen and grain. Pairs with poster typography (`heroWord()`) and editorial tags (`tag()`) |
 
 Looks mix inside a frame: `withLook('flat', () => { ... })` draws whatever is inside in another look (a crisp UI over a painted world, a painted memory inside a flat scene); the paper and grain stay the scene's.
 
@@ -401,6 +431,7 @@ To add a look, add an entry to `LOOKS` in `src/core.js` and, if it needs a new w
 | `morphPts(A, B, k)`, `resample(P, n)`, `arcPts(...)` | one closed shape turning into another (circle → card → star); arcs as points |
 | `masked(pts, fn)` | draws `fn` only inside a shape (reveals). Works for native drawing (flat, motion, glow), not for watercolor paint; masks don't nest |
 | `arcRing`, `burstLines`, `dotGrid`, `pillBar` | progress rings, radial hit lines, dot-grid textures, growing bars |
+| `act(t, keys, table, o)`, `beatKeys(t0, t1, names, every, seed)` | acting from key poses like limited animation: each pose reached with overshoot, held, and left with a small anticipation; `beatKeys` makes a background actor change pose every `every` seconds. Tables: `CLAWD_POSES` (`src/clawd.js`) and `SCI_POSES` (`src/characters.js`) |
 | `motionText(txt, x, y, t, t0, o)` | title-sequence type, letter by letter: `rise`, `slide`, `scale` or `type` (typewriter) |
 
 ### Painting
@@ -567,6 +598,10 @@ clawd(x, y, 24, { ...feel('proud', t), aR: 1.2, armR: (u, sw) => paint(starPts(u
 
 - Anything the arms can't carry, like a big object overhead, is drawn separately at a point computed from the same pose. The demo's star does this. Make sure it touches: check it with a crop.
 
+### Poses
+
+`act(t, [[t0, 'point'], [t1, 'shrug'], ...], CLAWD_POSES)` returns a pose to spread into `clawd()`, after its emotion: `{ ...feel('happy', t), ...act(t, keys, CLAWD_POSES) }`. The poses are rest, point, present, cheer, shrug, think, panic, recoil, lean, crouch, hop, bow, power, wave, slump and proud. Clawd's arms are short, so its poses read mostly through the body (lean, crouch, hop, bow). `SCI_POSES` does the same for the scientist, whose arm angles run from 0 (down) through 1.6 (straight out) to 3 (up).
+
 ### Dances
 
 `move(style, t, seed)` returns beat-locked pose offsets. The styles are bounce, hop, roof (arms up), sway, spin (a drawn spin through the key views once a bar), wave, walk, run, idle, stomp and shimmy. `mix` changes style every two bars. `dancer(x, y, u, style, t, extra)` is `clawd` + `move`. You can combine a dance with a face: `{ ...move('bounce', t), eyes: 'happy', mouth: 'grin' }`.
@@ -580,7 +615,7 @@ The kit doesn't need music, but it's built for it:
 1. Register your scene with `bpm`, `duration`, `offset`, and `audio` using `registerScene('my_scene', { ... })`. Every idle, dance and `pulse()` then locks to the song.
 2. Put a one-off video's audio in `projects/` next to its scene (e.g. `projects/my_song.mp3`; `audio/` is for the tracks of the versioned scenes in `src/scenes/`) and reference it in the scene definition (`audio: 'projects/my_song.mp3'`) or pass `--audio=`. If the file is not found, prompt the user with the exact folder path to place it. Leave it there after export: the user deletes files in `audio/`, `out/` and `projects/` when they choose, so never offer or suggest removing them.
 3. Land hits, cuts and takes on beats (`beatN`, `pulse`). Cut on bar lines for big changes, and give each musical phrase its own visual.
-4. **Lyrics are physical.** Sync them with `tools/sync_lyrics.py` and load the generated script with the scene (`studio.html?script=projects/x.lyrics.js,projects/x.js`, same for `render.mjs --script=`). Act the meaning of a line too, not just its words.
+4. **Lyrics on screen.** In a fast-cut music video, one clean line (`subtitles()` in the display face) plus poster words on the hooks (`heroWord()`) reads best: physical words spread over the frame fight the tags and props of shots that change every second. Physical words suit slower sections, dialogue and shots built around the words. Sync them with `tools/sync_lyrics.py` and load the generated script with the scene (`studio.html?script=projects/x.lyrics.js,projects/x.js`, same for `render.mjs --script=`). Act the meaning of a line too, not just its words.
 5. **No audio, or only a voice?** `tools/make_bed.py` builds an instrumental bed around a moment (intro, build-up, drop at a chosen second, fade), a calm loop under a long narration (`--style=calm`) or a light cumbia for comedy and everyday scenes (`--style=cumbia`), can cut the music with a record scratch for a comedy beat (`--stop=a:b`), and, given a voice, mixes it on top and ducks the music while it talks. Its drum and synth voices live in `tools/synth.py`, to reuse in any other audio tool. Spoken voice (TTS, never singing) comes from `tools/narrate.py`; for a sung song, suggest Suno, Udio or ElevenLabs Music.
 6. **Explainers and voice-overs**: `tools/narrate.py` speaks a script written in blocks and writes the word timings, one line per block (with its id), so each shot starts on its block and details land on the words.
 7. **Audio-reactive visuals**: `tools/audio_envelope.py` writes a loudness envelope script; `envelopeAt(id, t)` returns 0..1, for waveforms, mouths that move while someone talks, things that pulse with a voice.
@@ -614,12 +649,17 @@ These are the things that make a Clawd video look generated. Check your storyboa
 - props floating near a hand instead of touching it
 - every shot a different world with nothing linking them
 - bare or generic backgrounds, and details that have nothing to do with what is being sung
+- a shot where two frames a second apart look the same: in a music video something visible changes every half second (a new pose, a prop arriving, the camera moving), even inside a long shot
+- the subject small in a big empty frame: the thing the line is about fills a third of the frame or more, and a close-up is often the answer
+- a gag that only reads through small text (a tag, a chat line, a note): the picture has to carry the joke by itself, and text only seasons it
+- lyric words scattered over the frame and competing with tags and props: in a busy music video, a clean line of lyrics plus a few designed hero words reads better
+- a different background colour in every shot with no system: hold a strict palette and a layout grammar for the whole video
 
 ## Physical Lyrics & Continuous Camera
 
 How the lyrics and the camera behave by default. Adapt all of it to the mood of each section.
 
-1. **Continuous camera** (the default for energetic sections; any transition is valid when it serves the moment):
+1. **Continuous camera** (for flowing sections; in a fast music video, cutting to a new picture for every line beats a long glide, see rule 4, and the camera moves inside each shot instead):
    - Carry the camera from one place to the next instead of cutting.
    - Use continuous camera directors ([`src/kinetic.js`](src/kinetic.js)):
      - `camPath(t, waypoints, easeFn)` for smooth multi-point camera flights through space.
