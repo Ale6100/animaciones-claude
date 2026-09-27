@@ -36,5 +36,5 @@
     if (lt > dur - .5) iris(960, 540, lerp(1500, 0, easeIn(seg(lt, dur - .5, dur))), PAL.ink);
   }
 
-  registerScene('literal', { title: 'La pelota (literal comedy example)', duration: 8, bpm: 100, offset: 0, lyrics: [], shots: [[0, gag]] });
+  registerScene('literal', { title: 'La pelota (literal comedy example)', look: 'watercolor', duration: 8, bpm: 100, offset: 0, lyrics: [], shots: [[0, gag]] });
 })();

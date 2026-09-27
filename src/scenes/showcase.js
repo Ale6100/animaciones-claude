@@ -40,5 +40,5 @@
     if (lt > dur - 1.4) iris(pipS[0], pipS[1], lerp(2300, 0, easeOut(seg(lt, dur - 1.4, dur - .2))), PAL.ink);
   }
 
-  registerScene('showcase', { title: "Pip's Night Out (adaptive example)", duration: 24, bpm: BPMv, offset: 0, lyrics: [], shots: [[0, night]] });
+  registerScene('showcase', { title: "Pip's Night Out (adaptive example)", look: 'watercolor', duration: 24, bpm: BPMv, offset: 0, lyrics: [], shots: [[0, night]] });
 })();

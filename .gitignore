@@ -11,6 +11,11 @@ out/
 *.wav
 *.ogg
 *.flac
+*.weba
+*.webm
+*.m4a
+*.opus
+*.aac
 audio/*.wav
 audio/*.mp3
 !audio/*.py

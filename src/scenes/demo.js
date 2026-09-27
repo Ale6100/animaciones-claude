@@ -162,6 +162,7 @@
   if (typeof registerScene === 'function') {
     registerScene('demo', {
       title: 'The Fallen Star',
+      look: 'watercolor',
       duration: 11.0,
       bpm: 120,
       offset: 0,

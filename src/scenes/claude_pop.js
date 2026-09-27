@@ -687,6 +687,7 @@
   if (typeof registerScene === 'function') {
     registerScene('claude_pop', {
       title: 'Claude Pop: Latent Singularity',
+      look: 'watercolor',
       duration: 36.0,
       bpm: 124,
       offset: 0,

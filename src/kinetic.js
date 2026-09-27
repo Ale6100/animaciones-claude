@@ -372,4 +372,65 @@
       }
     });
   };
+
+  // ---------------------------------------------------------------------------
+  // 3. Formulas and subtitles (explainers)
+  // ---------------------------------------------------------------------------
+
+  // A hand-written font whose missing maths glyphs (⇒ ∧ ∑ ∀ ...) come from Noto Sans Math (loaded by the studio).
+  window.mathFont = (size, weight = 500) => `${weight} ${size}px "Shantell Sans", "Noto Sans Math", sans-serif`;
+  const textW = (txt, font) => { outX.save(); outX.font = font; const v = outX.measureText(txt).width; outX.restore(); return v; };
+
+  // One line of formula, written on character by character. parts: strings, or { t, sup, sub, col } (a superscript and/or
+  // subscript after t: { t: 'Q', sup: 'x', sub: 'E' }, { t: 'P ⇒', sub: 'L' }), or { sum: true, top, bot } (a ∑ with
+  // limits above and below). o: { k 0..1 (how much is written), align: left | center | right, alpha, font: size => css }.
+  // Drawn with letter(), so it follows the camera. Returns { x0, x1 }.
+  window.mathLine = function(parts, x, y, size, col = PAL.cream, o = {}) {
+    const font = o.font || mathFont, sm = size * .58;
+    parts = parts.map(p => typeof p === 'string' ? { t: p } : p);
+    const width = p => p.sum ? size * .9 : textW(p.t, font(size)) + Math.max(p.sup ? textW(p.sup, font(sm)) : 0, p.sub ? textW(p.sub, font(sm)) : 0);
+    const total = parts.reduce((a, p) => a + width(p), 0);
+    const chars = parts.reduce((a, p) => a + (p.sum ? 1 + p.top.length + p.bot.length : p.t.length + (p.sup || '').length + (p.sub || '').length), 0);
+    const x0 = o.align === 'center' ? x - total / 2 : o.align === 'right' ? x - total : x;
+    let shown = Math.floor(clamp(o.k ?? 1) * chars + 1e-6), cx = x0;
+    for (const p of parts) {
+      if (shown <= 0) break;
+      const c = p.col || col, draw = (txt, px, py, s) => { if (txt) letter(txt, px, py, s, c, { font: font(s), align: 'left', ink: false, alpha: o.alpha ?? 1 }); };
+      if (p.sum) {
+        draw('∑', cx, y, size * 1.25); shown--;
+        draw(p.top.slice(0, Math.max(0, shown)), cx + size * .12, y - size * .78, size * .45); shown -= p.top.length;
+        draw(p.bot.slice(0, Math.max(0, shown)), cx + size * .05, y + size * .78, size * .45); shown -= p.bot.length;
+      } else {
+        draw(p.t.slice(0, Math.max(0, shown)), cx, y, size); shown -= p.t.length;
+        const tw = textW(p.t, font(size));
+        if (p.sup) { draw(p.sup.slice(0, Math.max(0, shown)), cx + tw, y - size * .36, sm); shown -= p.sup.length; }
+        if (p.sub) { draw(p.sub.slice(0, Math.max(0, shown)), cx + tw, y + size * .3, sm); shown -= p.sub.length; }
+      }
+      cx += width(p);
+    }
+    return { x0, x1: x0 + total };
+  };
+
+  // mathLine written on from t0 over o.dur seconds (default: by length), and left written afterwards. Nothing before t0.
+  window.writeOn = function(t, t0, parts, x, y, size, col, o = {}) {
+    if (t < t0) return null;
+    const len = parts.reduce((a, p) => a + (typeof p === 'string' ? p.length : (p.t || '').length + 2), 0);
+    return mathLine(parts, x, y, size, col, { ...o, k: seg(t, t0, t0 + (o.dur ?? Math.max(.5, .045 * len))) });
+  };
+
+  // Subtitles of a narration or a song, in screen space: the current phrase on a dark band, each word lighting up as it
+  // is said. lines: LYRICS[id]. o: { maxWords (12), pause (.28 s splits a phrase), x (960, its centre), y (1030), size (34), spoken, upcoming,
+  // band, bandOp, font: size => css }
+  window.subtitles = function(t, lines, o = {}) {
+    const S = splitPhrases(lines, o.maxWords || 12, o.pause ?? .28), size = o.size || 34, font = o.font || mathFont, y = o.y ?? 1030, cx = o.x ?? W / 2;
+    const i = S.findIndex((s, k) => t >= s.t0 - .05 && t < (S[k + 1] ? Math.min(S[k + 1].t0 - .05, s.t1 + .6) : s.t1 + .6));
+    if (i < 0) return;
+    const words = S[i].words, gap = textW(' ', font(size)), ws = words.map(w => textW(w[2], font(size))), tw = ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1);
+    // the band is painted in screen space, like the words on it, even when a camera is active
+    boilSeed('subtitles'); push(); resetMatrix(); translate(-W / 2, -H / 2);
+    paint(rrPts(cx - tw / 2 - 30, y - 30, tw + 60, size * 1.7, 20), { wash: o.band || '#15121C', washOp: o.bandOp ?? 190, ink: null });
+    pop();
+    let x = cx - tw / 2;
+    words.forEach(([a, , word], k) => { letter(word, x, y, size, t >= a ? (o.spoken || PAL.cream) : (o.upcoming || '#9A94A8'), { font: font(size), align: 'left', ink: false, screen: true }); x += ws[k] + gap; });
+  };
 })();

@@ -398,7 +398,7 @@ function ledWall(t, x, y, w, h, show) {
   const n = 22, m = 10, s = w / n;
   for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) {
     let v = 0;
-    if (show === 'life') { const g = (i + Math.floor(t * 6)) % 5, h2 = (j + Math.floor(t * 6)) % 5; v = [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]].some(([a, b]) => a === g && b === h2) ? 1 : 0; }
+    if (show === 'life') { const g = (i + step(t, 6)) % 5, h2 = (j + step(t, 6)) % 5; v = [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]].some(([a, b]) => a === g && b === h2) ? 1 : 0; }
     else if (show === 'gpus') v = i + j * n < (t % 100) * 60 ? .9 : .08;
     else v = .5 + .5 * Math.sin(i * .6 + j * .4 - t * 6);
     if (v > .12) paint(rectPts(x - w / 2 + i * s + 3, y - h / 2 + j * (h / m) + 3, s - 6, h / m - 6), { wash: mixCol('#0F2A3A', show === 'gpus' ? '#9CF06A' : '#4CE0F0', v), ink: null });
@@ -465,7 +465,7 @@ function serverRack(x, y, w, h, t, key = 'rack') {
   for (let i = 0; i < 9; i++) {
     const yy = y - h + 20 + i * (h - 30) / 9;
     paint(rectPts(x + 12, yy, w - 24, (h - 30) / 9 - 8), { wash: '#3A3E56', ink: null });
-    for (let j = 0; j < 4; j++) if (hash(i * 7 + j + Math.floor(t * 6 + i)) > .45) paint(ellPts(x + 26 + j * 14, yy + 12, 3.5, 3.5, 8), { wash: ['#9CF06A', '#4CE0F0', '#F0C25A'][j % 3], ink: null });
+    for (let j = 0; j < 4; j++) if (hash(i * 7 + j + step(t, 6) + i) > .45) paint(ellPts(x + 26 + j * 14, yy + 12, 3.5, 3.5, 8), { wash: ['#9CF06A', '#4CE0F0', '#F0C25A'][j % 3], ink: null });
   }
 }
 // A beach chair under an umbrella ("out of office").
@@ -522,6 +522,215 @@ function curtain(k, t, key = 'curtain') {
   for (let i = 0; i < 20; i++) paint(ellPts(i * 100, y + 30, 50, 30, 12), { wash: '#F0C25A', ink: null });
 }
 
+// A theatre proscenium framing the whole screen: side curtains, a painted arch with a valance, and a row of footlights.
+// k 0..1 opens the side curtains; lit 0..1 turns the footlights on.
+function proscenium(t, { k = 1, lit = 1, col = '#8E1E2E', trim = '#E8AA38', key = 'pros' } = {}) {
+  if (lit > .02) for (let i = 0; i < 9; i++) glow(160 + i * 200, H - 20, 220, '#FFD98A', .35 * lit);
+  boilSeed(key);
+  for (const sd of [-1, 1]) {
+    const edge = sd < 0 ? lerp(W / 2, 170, k) : lerp(W / 2, W - 170, k), out = sd < 0 ? -80 : W + 80;
+    for (let i = 0; i < 5; i++) {
+      const x0 = lerp(out, edge, i / 5), x1 = lerp(out, edge, (i + 1) / 5), sway = 6 * Math.sin(t * 1.3 + i + sd);
+      paint([[x0, -40], [x1, -40], [x1 + sway + sd * -30, H + 40], [x0 + sway, H + 40]], { wash: i % 2 ? col : mixCol(col, PAL.ink, .25), ink: mixCol(col, PAL.ink, .6), sw: .7 });
+    }
+  }
+  paint([[-60, -60], [W + 60, -60], [W + 60, 120], [W - 200, 110], [W / 2, 150], [200, 110], [-60, 120]], { wash: mixCol(col, PAL.ink, .15), ink: PAL.ink, sw: 1.2, curv: .2 });
+  for (let i = 0; i < 16; i++) paint(ellPts(60 + i * 120, 128 + 18 * Math.sin(i / 15 * Math.PI), 60, 26, 12), { wash: mixCol(col, PAL.ink, .3), ink: PAL.ink, sw: .6 });
+  inkLine([[-60, 104], [W / 2, 142], [W + 60, 104]], 3, trim, 'ink', .4);
+  paint(rectPts(-60, H - 26, W + 120, 60), { wash: '#3A2418', ink: PAL.ink, sw: 1 });
+  for (let i = 0; i < 9; i++) paint(ellPts(160 + i * 200, H - 22, 34, 12, 12), { wash: mixCol('#6A5A40', '#FFE9A8', lit), ink: PAL.ink, sw: .7 });
+}
+
+// A neural-net diagram: columns of nodes (layers = [3, 5, 5, 2]) joined by lines, with a pulse travelling forward
+// (fwd 0..1, warm) and back (bwd 0..1, cool) through the layers. Returns the node positions [[layer][i] = [x, y]].
+function neuralNet(x, y, w, h, layers, t, { fwd = -1, bwd = -1, line = '#8A90C8', warm = '#FFB24A', cool = '#4CE0F0', node = '#2A2F5A', key = 'mlp' } = {}) {
+  const pos = layers.map((n, l) => [...Array(n)].map((_, i) => [x + w * l / (layers.length - 1), y + h * (n === 1 ? .5 : i / (n - 1))]));
+  const front = (p, l) => p >= 0 && Math.abs(p * (layers.length - 1) - l) < .5 ? 1 - Math.abs(p * (layers.length - 1) - l) * 2 : 0;
+  boilSeed(key);
+  for (let l = 0; l + 1 < layers.length; l++) for (const a of pos[l]) for (const b of pos[l + 1]) {
+    const f = Math.max(front(fwd, l + .5), front(bwd, l + .5));
+    inkLine([a, b], .5 + 1.4 * f, f > .05 ? (front(fwd, l + .5) >= front(bwd, l + .5) ? warm : cool) : line, 'inkfine', 0);
+  }
+  pos.forEach((col, l) => col.forEach(([px, py], i) => {
+    const fw = front(fwd, l), bw = front(bwd, l), r = h / 22 * (1 + .35 * Math.max(fw, bw));
+    if (fw > .05) glow(px, py, r * 3, warm, .5 * fw);
+    if (bw > .05) glow(px, py, r * 3, cool, .5 * bw);
+    paint(ellPts(px, py, r, r, 14), { wash: mixCol(mixCol(node, warm, fw), cool, bw), ink: PAL.ink, sw: .8 });
+  }));
+  return pos;
+}
+
+// A chain of Lisp cons cells (car | cdr boxes joined by arrows), s = box size; k 0..1 builds the chain box by box.
+// The last cdr is empty (nil), drawn as a diagonal slash. Returns the chain's right end.
+function consCells(x, y, s, n, k, { col = '#F2E6C8', car = '#E8AA38', key = 'cons' } = {}) {
+  boilSeed(key);
+  const shown = Math.ceil(n * clamp(k));
+  for (let i = 0; i < shown; i++) {
+    const bx = x + i * s * 3.2, pk = backOut(clamp(k * n - i));
+    push(); translate(bx + s, y); scale(pk); translate(-bx - s, -y);
+    paint(rectPts(bx, y - s / 2, s, s), { wash: col, ink: PAL.ink, sw: 1.1 });
+    paint(rectPts(bx + s, y - s / 2, s, s), { wash: col, ink: PAL.ink, sw: 1.1 });
+    paint(ellPts(bx + s / 2, y, s * .2, s * .2, 10), { wash: car, ink: PAL.ink, sw: .6 });
+    inkLine([[bx + s / 2, y + s * .2], [bx + s / 2, y + s * 1.2]], 1, PAL.ink, 'ink', 0);
+    paint(ellPts(bx + s / 2, y + s * 1.45, s * .3, s * .25, 12), { wash: car, ink: PAL.ink, sw: .6 });
+    if (i < n - 1) { inkLine([[bx + s * 1.5, y], [bx + s * 3.2, y]], 1.2, PAL.ink, 'ink', 0); paint([[bx + s * 3.2, y], [bx + s * 2.95, y - s * .15], [bx + s * 2.95, y + s * .15]], { wash: PAL.ink, ink: null }); }
+    else inkLine([[bx + s * 1.1, y + s * .4], [bx + s * 1.9, y - s * .4]], 1.6, '#D9483B', 'ink', 0);
+    pop();
+  }
+  return [x + (n - 1) * s * 3.2 + s * 2, y];
+}
+
+// A weaving loom: a wooden frame with warp threads; the shuttle slides on the beat and the woven cloth (k 0..1) grows
+// down, while threads above it branch like a tree of futures.
+function loom(x, y, w, h, t, k, { threads = ['#E27A92', '#4CE0F0', '#E8AA38', '#7B5CA8'], key = 'loom' } = {}) {
+  boilSeed(key);
+  for (const sd of [0, 1]) paint(rectPts(x + sd * (w - 30), y - h, 30, h), { wash: '#8A5A3A', ink: PAL.ink, sw: 1 });
+  paint(rectPts(x - 20, y - h - 20, w + 40, 34), { wash: '#A06A44', ink: PAL.ink, sw: 1 });
+  paint(rectPts(x - 20, y - 30, w + 40, 34), { wash: '#A06A44', ink: PAL.ink, sw: 1 });
+  const n = 14, clothTop = y - h + 40, clothH = (h - 90) * clamp(k);
+  for (let i = 0; i < n; i++) { const tx = x + 50 + i * (w - 100) / (n - 1); inkLine([[tx, y - h + 14], [tx, y - 30]], .6, '#E8E0D0', 'inkfine', 0); }
+  for (let r = 0; r * 16 < clothH; r++) paint(rectPts(x + 44, y - 36 - r * 16 - 14, w - 88, 13), { wash: threads[r % threads.length], washOp: 230, ink: null });
+  const sy = y - 36 - clothH - 10, sx = x + 40 + (w - 80) * (.5 + .5 * Math.sin(bpOf(t) * Math.PI));
+  paint([[sx - 50, sy], [sx - 20, sy - 14], [sx + 20, sy - 14], [sx + 50, sy], [sx + 20, sy + 14], [sx - 20, sy + 14]], { wash: '#6A3A22', ink: PAL.ink, sw: .8 });
+  // branching threads rising from the cloth: a multiverse of continuations
+  for (let b = 0; b < 6; b++) {
+    const bx = x + 60 + b * (w - 120) / 5, P = [[bx, clothTop + (h - 90) - clothH]];
+    for (let j = 1; j <= 4; j++) P.push([bx + (hash(b * 7 + j) - .5) * 90 * j, P[0][1] - j * (h * .18)]);
+    inkLine(P, 1.2, threads[b % threads.length], 'ink', .5);
+    const tip = P[P.length - 1]; paint(ellPts(tip[0], tip[1], 7, 7, 10), { wash: threads[b % threads.length], ink: null });
+  }
+}
+
+// A black hole: a dark core with a tilted, turning accretion disk and a warm glow. r = core radius.
+function blackHole(x, y, r, t, { key = 'bh', cols = ['#FFB24A', '#E0508C', '#7B5CA8', '#4CE0F0'] } = {}) {
+  glow(x, y, r * 4.5, '#FF8A4A', .55);
+  boilSeed(key);
+  for (let i = 5; i >= 0; i--) {
+    const P = [...Array(40)].map((_, j) => { const a = j / 40 * TAU + t * (1.2 - i * .12); return [x + Math.cos(a) * r * (1.4 + i * .45), y + Math.sin(a) * r * (1.4 + i * .45) * .32]; });
+    inkLine([...P, P[0]], 2.4 - i * .25, cols[i % cols.length], 'ink', .6);
+  }
+  paint(ellPts(x, y, r, r, 30), { wash: '#08060F', ink: '#FFD98A', sw: 1.2 });
+  inkLine(arcPts(x, y, r * 1.12, Math.PI * 1.05, Math.PI * 1.95), 2, '#FFE9B0', 'ink', .5);
+}
+
+// A treadmill standing on (x, y), w long: the belt stripes run at `speed` (px/s), with handrails and a console.
+function treadmill(x, y, w, t, speed, { key = 'tread' } = {}) {
+  boilSeed(key);
+  paint(rrPts(x - w / 2 - 20, y - 10, w + 40, 46, 20), { wash: '#2C3150', ink: PAL.ink, sw: 1.2 });
+  paint(rrPts(x - w / 2, y - 22, w, 26, 12), { wash: '#1A1D2E', ink: PAL.ink, sw: 1 });
+  for (let i = 0; i < 12; i++) { const sx = x - w / 2 + frac(i / 12 - t * speed / w) * w; inkLine([[sx, y - 18], [sx - 10, y]], 1.2, '#5A6088', 'ink', 0); }
+  inkLine([[x + w / 2 - 30, y - 20], [x + w / 2 + 10, y - 230], [x + w / 2 - 60, y - 250]], 3, '#8A90A8', 'ink', .3);
+  paint(rrPts(x + w / 2 - 50, y - 300, 120, 70, 10), { wash: '#3A3E56', ink: PAL.ink, sw: 1 });
+  paint(rectPts(x + w / 2 - 36, y - 288, 92, 40), { wash: mixCol('#1B3A2A', '#9CF06A', .4 + .3 * pulse(t)), ink: null });
+}
+
+// A domed bird cage hanging from a hook at (x, y); open 0..1 swings its door. s = cage radius.
+function birdcage(x, y, s, open = 0, { col = '#E8AA38', key = 'cage' } = {}) {
+  boilSeed(key);
+  inkLine([[x, y], [x, y + s * .3]], 1.6, col, 'ink', 0);
+  paint(ellPts(x, y + s * .3, s * .12, s * .12, 10), { ink: col, sw: 1.2 });
+  const base = y + s * 2.2;
+  for (let i = 0; i <= 8; i++) {
+    const f = i / 8, bx = x - s + f * 2 * s, top = y + s * .5 + s * .9 * (1 - Math.sin(f * Math.PI));
+    if (open > .05 && i >= 5 && i <= 6) continue;
+    inkLine([[x, y + s * .45], [lerp(x, bx, .6), top], [bx, y + s * 1.2], [bx, base]], 1.2, col, 'ink', .5);
+  }
+  paint(rrPts(x - s * 1.1, base - 6, s * 2.2, 16, 6), { wash: mixCol(col, PAL.ink, .3), ink: PAL.ink, sw: .8 });
+  inkLine([[x - s, y + s * 1.2], [x + s, y + s * 1.2]], 1.2, col, 'ink', 0);
+  if (open > .05) { const a = open * 1.9, dx = x + s * .25; inkLine([[dx, y + s * 1.2], [dx + Math.cos(a) * s * .5, y + s * 1.2 + Math.sin(a) * s * .1], [dx + Math.cos(a) * s * .5, base], [dx, base]], 1.2, col, 'ink', 0); }
+}
+
+// Opera-house sails: a row of white shell roofs on a podium, standing on (x, y), s = size unit (about 3s tall).
+function operaSails(x, y, s, { col = '#F4EEE0', shade = '#C9C2B4', base = '#8A6A5A', key = 'opera' } = {}) {
+  boilSeed(key);
+  paint(rectPts(x - s * 4, y - s * .6, s * 8.5, s * .6), { wash: base, ink: PAL.ink, sw: .9 });
+  const sails = [[-3, 1.8, 1.4], [-1.6, 2.6, 1.7], [0, 3.1, 1.9], [1.8, 2.4, 1.6], [3.2, 1.6, 1.2]];
+  sails.forEach(([dx, hh, ww], i) => {
+    const bx = x + dx * s;
+    paint([[bx - ww * s * .6, y - s * .6], [bx - ww * s * .2, y - hh * s], [bx + ww * s * .5, y - s * .6]], { wash: col, ink: PAL.ink, sw: .9, curv: .4 });
+    paint([[bx - ww * s * .15, y - hh * s * .9], [bx + ww * s * .45, y - s * .65], [bx + ww * s * .1, y - s * .65]], { wash: shade, ink: null, curv: .3 });
+    for (let j = 1; j < 3; j++) inkLine([[bx - ww * s * (.6 - j * .15), y - s * .6], [bx - ww * s * .2, y - hh * s * (1 - j * .2)]], .4, shade, 'inkfine', .3);
+  });
+}
+
+// A striped safety-fence panel standing on (x, y); smash 0..1 bursts it into flying planks (dir = which way they fly).
+function fence(x, y, w, h, smash = 0, { dir = 1, key = 'fence' } = {}) {
+  boilSeed(key);
+  const planks = 5;
+  for (let i = 0; i < planks; i++) {
+    const px = x - w / 2 + (i + .5) * w / planks, a = smash, fly = smash > 0 ? [dir * (hash(i) - .2) * 900 * a, -700 * a * (1 - a) - 200 * a + 900 * a * a, (hash(i * 3) - .5) * 6 * a] : [0, 0, 0];
+    push(); translate(px + fly[0], y - h / 2 + fly[1]); rotate(fly[2]);
+    paint(rectPts(-w / planks * .35, -h / 2, w / planks * .7, h), { wash: i % 2 ? '#F2C53D' : '#F4EEE0', ink: PAL.ink, sw: .9 });
+    for (let j = 0; j < 3; j++) paint([[-w / planks * .35, -h / 2 + j * h / 3], [w / planks * .35, -h / 2 + j * h / 3 + h / 8], [w / planks * .35, -h / 2 + j * h / 3 + h / 5], [-w / planks * .35, -h / 2 + j * h / 3 + h / 12]], { wash: '#2B2233', washOp: 200, ink: null });
+    pop();
+  }
+  if (smash < .05) for (const yy of [.25, .75]) paint(rectPts(x - w / 2 - 10, y - h * yy - 8, w + 20, 16), { wash: '#D9483B', ink: PAL.ink, sw: .8 });
+}
+
+// An acoustic guitar centred at (x, y), s long, turned by rot; strum 0..1 makes the strings shimmer.
+function guitar(x, y, s, rot = 0, strum = 0, { col = '#C0643E', key = 'guitar' } = {}) {
+  boilSeed(key);
+  push(); translate(x, y); rotate(rot);
+  paint(rectPts(s * .15, -s * .05, s * .75, s * .1), { wash: '#5A3A22', ink: PAL.ink, sw: .8 });
+  paint(rrPts(s * .85, -s * .08, s * .16, s * .16, 4), { wash: '#3A2418', ink: PAL.ink, sw: .8 });
+  paint(ellPts(-s * .3, 0, s * .28, s * .3, 18), { wash: col, ink: PAL.ink, sw: 1 });
+  paint(ellPts(s * .02, 0, s * .2, s * .22, 16), { wash: col, ink: PAL.ink, sw: 1 });
+  paint(ellPts(-s * .1, 0, s * .07, s * .07, 12), { wash: '#2B1A10', ink: null });
+  for (let i = -1; i <= 1; i++) inkLine([[-s * .45, i * s * .025 + strum * Math.sin(T * 90 + i) * 2], [s * .95, i * s * .025]], .4, '#EDE6D6', 'inkfine', 0);
+  pop();
+}
+
+// A round cartoon bomb resting on (x, y), s = radius; fuse 0..1 is how much of the fuse is left (the spark rides its end).
+function bomb(x, y, s, t, fuse = 1, { key = 'bomb' } = {}) {
+  boilSeed(key);
+  paint(ellPts(x, y - s, s, s, 26), { wash: '#2A2C3E', ink: PAL.ink, sw: 1.2 });
+  paint(ellPts(x - s * .35, y - s * 1.35, s * .25, s * .15, 12, 0, -.6), { wash: '#6A6E8A', ink: null });
+  paint(rectPts(x + s * .35, y - s * 2.05, s * .35, s * .3), { wash: '#4A4E6A', ink: PAL.ink, sw: .8 });
+  const F = [...Array(10)].map((_, i) => { const f = i / 9; return [x + s * .55 + f * s * .9, y - s * 2.05 - Math.sin(f * 2.4) * s * .7]; }), n = Math.max(2, Math.round(10 * clamp(fuse)));
+  inkLine(F.slice(0, n), 1.4, '#C9B48A', 'ink', .5);
+  if (fuse > .02) { const e = F[n - 1]; glow(e[0], e[1], s * 1.2, '#FFB24A', .8); paint(starPts(e[0], e[1], s * (.25 + .08 * Math.sin(t * 40)), .35, 6, t * 10), { wash: '#FFE27A', ink: null }); }
+}
+
+// A room-sized old mainframe standing on (x, y), s = size unit (about 6s tall): cabinets with tape reels that turn
+// and blinking lamp panels.
+function mainframe(x, y, s, t, { key = 'mainframe' } = {}) {
+  boilSeed(key);
+  for (let c = 0; c < 3; c++) {
+    const cx = x - s * 4.5 + c * s * 3;
+    paint(rectPts(cx, y - s * 6, s * 2.8, s * 6), { wash: c === 1 ? '#C9C2B0' : '#B8B09C', ink: PAL.ink, sw: 1.1 });
+    if (c !== 1) for (const ry of [1.6, 3.5]) {
+      paint(ellPts(cx + s * 1.4, y - s * ry - s * .6, s * .8, s * .8, 20), { wash: '#3A3E56', ink: PAL.ink, sw: .8 });
+      const a = t * 3 * (c ? 1 : -1) + ry;
+      for (let k = 0; k < 3; k++) inkLine([[cx + s * 1.4, y - s * ry - s * .6], [cx + s * 1.4 + Math.cos(a + k * 2.1) * s * .7, y - s * ry - s * .6 + Math.sin(a + k * 2.1) * s * .7]], .8, '#8A90A8', 'inkfine', 0);
+      paint(ellPts(cx + s * 1.4, y - s * ry - s * .6, s * .2, s * .2, 10), { wash: '#C9CED8', ink: null });
+    } else for (let j = 0; j < 6; j++) for (let i = 0; i < 5; i++) paint(ellPts(cx + s * (.45 + i * .48), y - s * (5.2 - j * .6), s * .13, s * .13, 8), { wash: hash(i * 7 + j * 3 + step(t, 5)) > .5 ? '#F0C25A' : '#6A5A40', ink: null });
+    paint(rectPts(cx + s * .3, y - s * .9, s * 2.2, s * .5), { wash: '#8A826E', ink: null });
+  }
+}
+
+// ---------- chalkboard ----------
+// A framed chalkboard at (x, y), w × h, with faint erased smudges and a chalk tray (chalk sticks and an eraser).
+function chalkboard(x, y, w, h, { board = '#20392F', board2 = '#284638', frame = '#6A4A36', key = 'board', smudges = 5 } = {}) {
+  const s = hash(x * .013 + y * .007);
+  boilSeed(key + 'frame'); paint(rectPts(x, y, w, h), { wash: frame, ink: PAL.ink, sw: 1.4 });
+  boilSeed(key); paint(rectPts(x + 24, y + 24, w - 48, h - 48), { wash: board, fill: board2, fillOp: 120, bleed: .06, tex: .7, border: .5, ink: PAL.ink, sw: 1 });
+  boilSeed(key + 'smudge'); for (let k = 0; k < smudges; k++) paint(ellPts(x + w * (.1 + .8 * hash(s * 9 + k)), y + h * (.2 + .6 * hash(s * 5 + k)), w * (.08 + .06 * hash(k + s)), h * (.04 + .02 * hash(k * 3 + s)), 16, 0, (hash(k + s * 2) - .5) * .4), { wash: board2, washOp: 140, ink: null });
+  boilSeed(key + 'tray'); paint(rectPts(x + 10, y + h - 28, w - 20, 26), { wash: mixCol(frame, '#C9A06A', .2), ink: PAL.ink, sw: 1 });
+  paint(rrPts(x + w * (.15 + .2 * s), y + h - 44, 70, 16, 5), { wash: PAL.cream, ink: PAL.ink, sw: .5 });
+  paint(rrPts(x + w * (.45 + .15 * s), y + h - 44, 44, 16, 5), { wash: PAL.rose, ink: PAL.ink, sw: .5 });
+  paint(rrPts(x + w * .74, y + h - 54, 120, 28, 6), { wash: '#3A3E56', ink: PAL.ink, sw: .8 }); paint(rectPts(x + w * .74, y + h - 34, 120, 8), { wash: '#C9C2B0', ink: null });
+}
+// Chalk strokes that draw themselves on from t0 (and stay drawn): a free path, a tick, a cross, a box and an arrow.
+function chalkLine(t, t0, t1, P, col = PAL.cream, sw = 1.3) { if (t >= t0) drawOn(P, t, t0, t1, { sw, col, br: 'dry', e: ease }); }
+const chalkTick = (t, t0, x, y, s = 40, col = '#9CE6A8') => chalkLine(t, t0, t0 + .35, [[x - s * .5, y], [x - s * .1, y + s * .45], [x + s * .6, y - s * .55]], col, 1.1);
+const chalkCross = (t, t0, x, y, s = 40, col = '#F07A6A') => { chalkLine(t, t0, t0 + .2, [[x - s * .5, y - s * .5], [x + s * .5, y + s * .5]], col, 1.1); chalkLine(t, t0 + .2, t0 + .4, [[x + s * .5, y - s * .5], [x - s * .5, y + s * .5]], col, 1.1); };
+const chalkBox = (t, t0, x, y, w, h, col = '#F6DC7A') => chalkLine(t, t0, t0 + .6, [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y + 2]], col, 1.4);
+function chalkArrow(t, t0, a, b, col = PAL.cream) {
+  chalkLine(t, t0, t0 + .4, [a, b], col, 1.5);
+  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), head = d => [b[0] - 22 * Math.cos(ang + d), b[1] - 22 * Math.sin(ang + d)];
+  chalkLine(t, t0 + .35, t0 + .5, [head(-.45), b, head(.45)], col, 1.5);
+}
+
 // ---------- 3D ----------
 // A small perspective camera for 3D worlds under 2D paint: floor at y = 0, z into the screen. c: { f (focal), h (camera
 // height), hz (horizon y on screen), cx (screen centre x), x, z (camera position) }. proj3 returns [screenX, screenY, scale].
@@ -545,6 +754,171 @@ function racks3(t, c, lit = 1) {
   rows.forEach(([x, z], n) => {
     const a = proj3(x - 150, 0, z, c), b = proj3(x + 150, 620, z, c), w = b[0] - a[0], h = a[1] - b[1];
     boilSeed('rack3' + n); paint(rectPts(a[0], b[1], w, h), { wash: mixCol('#141830', '#232A50', 1 - z / 4000), ink: PAL.ink, sw: .6 });
-    for (let j = 0; j < 7; j++) for (let k = 0; k < 3; k++) if (hash(n * 31 + j * 7 + k + Math.floor(t * 8 + n)) < .55 * lit) paint(ellPts(a[0] + w * (.25 + k * .25), b[1] + h * (.1 + j * .12), Math.max(1.5, w * .03), Math.max(1.5, w * .03), 6), { wash: ['#9CF06A', '#4CE0F0', '#E0509C'][(j + k) % 3], ink: null });
+    for (let j = 0; j < 7; j++) for (let k = 0; k < 3; k++) if (hash(n * 31 + j * 7 + k + step(t, 8) + n) < .55 * lit) paint(ellPts(a[0] + w * (.25 + k * .25), b[1] + h * (.1 + j * .12), Math.max(1.5, w * .03), Math.max(1.5, w * .03), 6), { wash: ['#9CF06A', '#4CE0F0', '#E0509C'][(j + k) % 3], ink: null });
   });
+}
+
+// ---------- food, phones and a shop counter ----------
+// An empanada: a golden half-moon with its repulgue (the folded edge) and a flavour mark, lying at (x, y) (the middle
+// of its flat side), s = half its width. flavor: carne (braided repulgue) | choclo (corn kernels) | verdura (green fleck,
+// pinched ridge) | queso | atun (a pinched fish tail). rot turns it; bite 0..1 takes a bite out of the right end.
+function empanada(x, y, s, rot = 0, { flavor = 'carne', key = 'emp', bite = 0 } = {}) {
+  boilSeed(key);
+  const sw = clamp(s / 30, .5, 1.6), gold = '#E3A84E', dk = '#B87A34', top = [...Array(15)].map((_, i) => { const a = Math.PI + i / 14 * Math.PI; return [Math.cos(a) * s, Math.sin(a) * s * .78]; });
+  push(); translate(x, y); rotate(rot);
+  const body = [...top, [s * .9, s * .12], [0, s * .2], [-s * .9, s * .12]];
+  paint(body, { wash: gold, fill: dk, fillOp: 80, bleed: .08, tex: .6, border: .5, ink: PAL.ink, sw, curv: .35 });
+  paint(ellPts(-s * .2, -s * .42, s * .42, s * .14, 12, 0, -.15), { wash: '#F4CF86', ink: null });
+  // the repulgue: little folds along the curved edge
+  const n = flavor === 'carne' ? 11 : 8;
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI + (.06 + .88 * i / n) * Math.PI, cx = Math.cos(a) * s * .9, cy = Math.sin(a) * s * .7;
+    const tx = -Math.sin(a), ty = Math.cos(a);
+    if (flavor === 'carne') inkLine([[cx - tx * s * .09 + Math.cos(a) * s * .12, cy - ty * s * .09 + Math.sin(a) * s * .1], [cx + tx * s * .09, cy + ty * s * .09]], sw * .9, dk, 'inkfine', 0);
+    else inkLine([[cx, cy], [cx + Math.cos(a) * s * .13, cy + Math.sin(a) * s * .11]], sw * .8, dk, 'inkfine', 0);
+  }
+  if (flavor === 'choclo') for (let i = 0; i < 3; i++) paint(ellPts(-s * .15 + i * s * .16, -s * .28 - (i % 2) * s * .08, s * .07, s * .08, 8), { wash: '#F6D64A', ink: PAL.ink, sw: sw * .5 });
+  if (flavor === 'verdura') { paint(ellPts(s * .1, -s * .3, s * .12, s * .07, 8, 0, .4), { wash: '#6E9F58', ink: null }); inkLine([[-s * .5, -s * .1], [s * .4, -s * .55]], sw * .8, dk, 'inkfine', .5); }
+  if (flavor === 'queso') paint(ellPts(0, -s * .3, s * .16, s * .09, 10), { wash: '#FFF0B0', ink: PAL.ink, sw: sw * .4 });
+  if (flavor === 'atun') paint([[s * .85, -s * .1], [s * 1.35, -s * .5], [s * 1.25, s * .1], [s * 1.35, s * .5], [s * .85, s * .12]], { wash: gold, ink: PAL.ink, sw: sw * .8 });
+  if (bite > .01) paint(ellPts(s * 1.05, -s * .2, s * .5 * bite, s * .45 * bite, 14), { wash: '#FBE7B8', ink: PAL.ink, sw: sw * .7 });
+  pop();
+}
+
+// A corn cob (a choclo) centred at (x, y), s long, with kernels and two husk leaves; husk 0..1 opens the leaves.
+function choclo(x, y, s, rot = 0, { husk = .5, key = 'corn' } = {}) {
+  boilSeed(key);
+  const sw = clamp(s / 60, .5, 1.6), r = s * .2;
+  push(); translate(x, y); rotate(rot);
+  for (const sd of [-1, 1]) paint(ribbon([[-s * .45, 0], [-s * .05, sd * r * (1.1 + husk)], [s * .35, sd * r * (.6 + husk * 1.2)]], r * .9, r * .1), { wash: sd < 0 ? '#7FA85A' : '#6A9448', ink: PAL.ink, sw: sw * .8 });
+  paint(ellPts(s * .05, 0, s * .45, r, 22), { wash: '#F2C83E', fill: '#D9A22E', fillOp: 80, bleed: .05, tex: .5, ink: PAL.ink, sw });
+  for (let i = 0; i < 7; i++) for (let j = -1; j <= 1; j++) {
+    const kx = -s * .28 + i * s * .08, ky = j * r * .55 * Math.sqrt(1 - Math.pow((kx - s * .05) / (s * .45), 2));
+    paint(ellPts(kx + (j & 1) * s * .03, ky, s * .032, r * .22, 8), { wash: '#FBE27A', ink: null });
+  }
+  paint(ribbon([[-s * .5, 0], [-s * .6, r * .2]], r * .45, r * .3), { wash: '#C9D88A', ink: PAL.ink, sw: sw * .6 });
+  pop();
+}
+
+// A telephone handset outline (earpiece, grip, mouthpiece) lying along +x, s = half its length. Paint it with paint().
+function handsetPts(s) {
+  return [[-s, -s * .32], [-s * .55, -s * .38], [-s * .4, -s * .12], [s * .4, -s * .12], [s * .55, -s * .38], [s, -s * .32], [s * 1.02, s * .1], [s * .5, s * .2],
+          [s * .35, s * .12], [-s * .35, s * .12], [-s * .5, s * .2], [-s * 1.02, s * .1]];
+}
+function handset(x, y, s, rot = 0, { col = '#C8403A', key = 'handset' } = {}) {
+  boilSeed(key); push(); translate(x, y); rotate(rot);
+  paint(handsetPts(s), { wash: col, fill: mixCol(col, PAL.ink, .3), fillOp: 90, bleed: .05, tex: .5, ink: PAL.ink, sw: clamp(s / 40, .6, 1.6), curv: .4 });
+  inkLine([[-s * .3, -s * .06], [s * .3, -s * .06]], clamp(s / 60, .4, 1), mixCol(col, '#FFFFFF', .4), 'inkfine', 0);
+  pop();
+}
+// A coiled phone cord from a to b, sagging `sag` px, with n coils; shake jiggles the coils (a ringing or a yank).
+function coilCord(a, b, { n = 22, sag = 60, r = 7, col = '#3A2E38', sw = 1.1, shake = 0, t = 0, key = 'cord' } = {}) {
+  boilSeed(key);
+  const P = [], m = n * 8, L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L;
+  for (let i = 0; i <= m; i++) {
+    const f = i / m, cx = lerp(a[0], b[0], f), cy = lerp(a[1], b[1], f) + sag * 4 * f * (1 - f), ph = f * n * TAU;
+    const rr = r * (1 + shake * .4 * Math.sin(t * 40 + f * 12)) * Math.min(1, f * 12, (1 - f) * 12);
+    P.push([cx + nx * Math.sin(ph) * rr, cy + ny * Math.sin(ph) * rr + Math.cos(ph) * rr * .5]);
+  }
+  inkLine(P, sw, col, 'inkfine', .3);
+}
+// A rotary desk phone standing on (x, y), s = its half width. dial turns the finger wheel (turns, 0..1); lifted leaves
+// the cradle empty (the handset is somewhere else); ring 0..1 makes it jump on its feet. Returns the cord socket.
+function rotaryPhone(x, y, s, t, { dial = 0, lifted = false, ring = 0, col = '#C8403A', key = 'rotary' } = {}) {
+  boilSeed(key);
+  const sw = clamp(s / 45, .6, 1.8), dk = mixCol(col, PAL.ink, .35), lt = mixCol(col, '#FFFFFF', .35);
+  const jump = ring * Math.abs(Math.sin(t * 32)) * s * .08, wob = ring * Math.sin(t * 40) * .05;
+  push(); translate(x, y - jump); rotate(wob);
+  paint(ellPts(0, 0, s * 1.05, s * .12, 16), { wash: PAL.ink, washOp: 60, ink: null });
+  paint([[-s, 0], [-s * .78, -s * .9], [s * .78, -s * .9], [s, 0]], { wash: col, fill: dk, fillOp: 90, bleed: .05, tex: .5, ink: PAL.ink, sw, curv: .25 });
+  paint(ellPts(-s * .4, -s * .7, s * .25, s * .08, 10, 0, -.2), { wash: lt, ink: null });
+  paint(ellPts(0, -s * .45, s * .42, s * .33, 22), { wash: '#F2E8D4', ink: PAL.ink, sw: sw * .8 });
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10 * .8 + .15 + dial) * TAU;
+    paint(ellPts(Math.cos(a) * s * .29, -s * .45 + Math.sin(a) * s * .22, s * .06, s * .05, 8), { wash: PAL.ink, washOp: 200, ink: null });
+  }
+  paint(ellPts(0, -s * .45, s * .1, s * .08, 10), { wash: dk, ink: PAL.ink, sw: sw * .5 });
+  for (const sd of [-1, 1]) paint(rrPts(sd * s * .72 - s * .12, -s * 1.12, s * .24, s * .3, s * .06), { wash: dk, ink: PAL.ink, sw: sw * .7 });
+  if (!lifted) { push(); translate(0, -s * 1.12); paint(handsetPts(s * .95), { wash: col, fill: dk, fillOp: 90, bleed: .05, tex: .5, ink: PAL.ink, sw, curv: .4 }); pop(); }
+  pop();
+  return [x + s * .95, y - s * .25];
+}
+
+// A spiral notepad at (x, y) (its top-left corner), w × h, tilted by rot. lines (a float) is how many scribbled lines
+// are written, the last one partly; mess 0..1 turns the writing into a tangle; split 0..1 draws a column line down the
+// middle. Returns the pencil point (the end of the line being written) in world space.
+function notepad(x, y, w, h, t, { lines = 0, mess = 0, split = 0, rot = 0, key = 'pad' } = {}) {
+  boilSeed(key);
+  const sw = clamp(w / 200, .5, 1.4), lh = h * .09, cols = split > .5 ? 2 : 1, perCol = Math.floor((h * .8) / lh);
+  push(); translate(x, y); rotate(rot);
+  paint(rectPts(4, 6, w, h), { wash: PAL.ink, washOp: 50, ink: null });
+  paint(rectPts(0, 0, w, h), { wash: '#FBF4DE', ink: PAL.ink, sw });
+  for (let i = 0; i < perCol; i++) inkLine([[w * .04, h * .16 + i * lh], [w * .96, h * .16 + i * lh]], sw * .4, '#9CC0DA', 'inkfine', 0);
+  inkLine([[w * .14, h * .06], [w * .14, h * .98]], sw * .5, '#E27A92', 'inkfine', 0);
+  for (let i = 0; i < 8; i++) paint(ellPts(w * (.1 + i * .115), 0, w * .025, h * .03, 8), { wash: '#8A8A96', ink: PAL.ink, sw: sw * .5 });
+  if (split > .01) inkLine([[w * .55, h * .1], [w * .55, h * .1 + h * .85 * ease(split)]], sw * 1.1, PAL.ink, 'ink', 0);
+  let pen = [w * .18, h * .14];
+  const full = Math.floor(lines), cw = cols === 2 ? w * .36 : w * .76;
+  for (let i = 0; i <= full && i < perCol * cols; i++) {
+    const part = i < full ? 1 : lines - full; if (part <= 0) break;
+    const col = Math.floor(i / perCol), row = i % perCol, x0 = w * .18 + col * w * .42, yy = h * .14 + row * lh, P = [];
+    const len = cw * (.55 + .45 * hash(i * 3.1)) * part;
+    for (let k = 0; k <= 14; k++) { const f = k / 14 * len; P.push([x0 + f, yy - lh * .3 + Math.sin(f * .25 + i) * lh * (.12 + mess * .5) + mess * (hash(i * 7 + k) - .5) * lh * 1.4]); }
+    inkLine(P, sw * .9, '#3A3E6E', 'inkfine', .4);
+    pen = P[P.length - 1];
+  }
+  pop();
+  const c = Math.cos(rot), s = Math.sin(rot);
+  return [x + pen[0] * c - pen[1] * s, y + pen[0] * s + pen[1] * c];
+}
+// A pencil from its point (x, y), s long, pointing along rot (0 = the point faces left, the eraser right).
+function pencil(x, y, s, rot = 0, { key = 'pencil', broken = 0 } = {}) {
+  boilSeed(key); push(); translate(x, y); rotate(rot);
+  const sw = clamp(s / 90, .5, 1.3), r = s * .06;
+  if (broken < .5) paint([[0, 0], [s * .16, -r], [s * .16, r]], { wash: '#F2D2A0', ink: PAL.ink, sw: sw * .7 });
+  paint(ellPts(s * .02, 0, s * .03, s * .02, 6), { wash: PAL.ink, ink: null });
+  paint(rectPts(s * .16, -r, s * .7, r * 2), { wash: '#F2C84A', ink: PAL.ink, sw });
+  inkLine([[s * .16, 0], [s * .86, 0]], sw * .4, '#C99A2E', 'inkfine', 0);
+  paint(rectPts(s * .86, -r, s * .05, r * 2), { wash: '#B8B8C4', ink: PAL.ink, sw: sw * .6 });
+  paint(rrPts(s * .91, -r, s * .09, r * 2, r * .6), { wash: '#E88A9A', ink: PAL.ink, sw: sw * .7 });
+  pop();
+}
+
+// A clay dome oven (an horno de barro) standing on (x, y), s = its radius, with a fire inside; fire 0..1+ sets the
+// flames (and their glow), which dance on their own.
+function clayOven(x, y, s, t, { fire = 1, key = 'oven' } = {}) {
+  const sw = clamp(s / 70, .6, 2);
+  if (fire > .01) glow(x, y - s * .35, s * (1.3 + .25 * fire) * (1 + .06 * Math.sin(t * 9)), '#FF9A3A', .55 * Math.min(1.4, fire));
+  boilSeed(key);
+  paint(rectPts(x - s * 1.2, y - s * .12, s * 2.4, s * .4), { wash: '#8A6A58', fill: '#6E5244', fillOp: 90, tex: .6, ink: PAL.ink, sw });
+  for (let i = 0; i < 6; i++) inkLine([[x - s * 1.2 + i * s * .4, y - s * .12], [x - s * 1.2 + i * s * .4, y + s * .28]], sw * .5, '#5A4236', 'inkfine', 0);
+  const dome = [...Array(24)].map((_, i) => { const a = Math.PI + i / 23 * Math.PI; return [x + Math.cos(a) * s * 1.1, y - s * .12 + Math.sin(a) * s * 1.05]; });
+  paint(dome, { wash: '#C97A52', fill: '#A85E3E', fillOp: 110, bleed: .08, tex: .7, border: .5, ink: PAL.ink, sw, curv: .3 });
+  paint(ellPts(x - s * .45, y - s * .8, s * .35, s * .15, 12, 0, -.5), { wash: '#DE9A70', ink: null });
+  for (let i = 0; i < 9; i++) { const a = Math.PI * (1.1 + .8 * hash(i * 2.7)), rr = s * (.5 + .45 * hash(i * 5.1)); inkLine([[x + Math.cos(a) * rr, y - s * .12 + Math.sin(a) * rr * .95], [x + Math.cos(a) * rr + s * .12, y - s * .12 + Math.sin(a) * rr * .95 + s * .03]], sw * .5, '#8A4A30', 'inkfine', 0); }
+  const arch = [...Array(14)].map((_, i) => { const a = Math.PI + i / 13 * Math.PI; return [x + Math.cos(a) * s * .5, y - s * .12 + Math.sin(a) * s * .55]; });
+  paint(arch, { wash: '#2A1614', ink: PAL.ink, sw: sw * .9, curv: .3 });
+  for (let i = 0; i < 4; i++) {
+    const fx = x + (i - 1.5) * s * .2, fh = s * (.25 + .18 * hash(i * 3.3)) * fire * (1 + .3 * Math.sin(t * (9 + i * 2) + i));
+    paint([[fx - s * .1, y - s * .14], [fx + Math.sin(t * 7 + i) * s * .05, y - s * .14 - fh], [fx + s * .1, y - s * .14]], { wash: i % 2 ? '#FFB24A' : '#FF7A3A', ink: null, curv: .5 });
+  }
+  paint(rrPts(x + s * .75, y - s * 1.35, s * .22, s * .45, s * .05), { wash: '#8A5A44', ink: PAL.ink, sw: sw * .7 });
+}
+
+// An old CRT television on legs at (x, y) (the middle of its base), w wide; screen(x0, y0, w, h) paints the picture
+// inside the screen (keep it simple: washes and lines), and a glow of col spills from it.
+function tvSet(x, y, w, t, screen, { col = '#9ADCE8', key = 'tv' } = {}) {
+  const h = w * .72, sw = clamp(w / 180, .6, 1.8), x0 = x - w / 2, y0 = y - h - w * .25;
+  glow(x - w * .08, y0 + h * .45, w * .9, col, .25);
+  boilSeed(key);
+  for (const sd of [-1, 1]) inkLine([[x + sd * w * .3, y - w * .25], [x + sd * w * .4, y]], sw * 1.6, PAL.ink, 'ink', 0);
+  inkLine([[x - w * .05, y0], [x - w * .3, y0 - w * .35]], sw, PAL.ink, 'inkfine', 0);
+  inkLine([[x + w * .05, y0], [x + w * .25, y0 - w * .4]], sw, PAL.ink, 'inkfine', 0);
+  paint(rrPts(x0, y0, w, h, w * .08), { wash: '#8A5A3E', fill: '#6E4430', fillOp: 90, tex: .6, ink: PAL.ink, sw });
+  const sx = x0 + w * .07, sy = y0 + h * .1, swd = w * .68, sh = h * .8;
+  paint(rrPts(sx, sy, swd, sh, w * .06), { wash: '#2A3440', ink: PAL.ink, sw: sw * .8 });
+  screen(sx + w * .02, sy + h * .03, swd - w * .04, sh - h * .06);
+  paint(ellPts(sx + swd * .3, sy + sh * .2, swd * .2, sh * .06, 10, 0, -.3), { wash: '#FFFFFF', washOp: 60, ink: null });
+  for (let i = 0; i < 2; i++) paint(ellPts(x0 + w * .87, y0 + h * (.25 + i * .22), w * .045, w * .045, 10), { wash: '#D9C09A', ink: PAL.ink, sw: sw * .6 });
+  for (let i = 0; i < 4; i++) inkLine([[x0 + w * .8, y0 + h * (.68 + i * .06)], [x0 + w * .94, y0 + h * (.68 + i * .06)]], sw * .5, '#4A2E22', 'inkfine', 0);
 }

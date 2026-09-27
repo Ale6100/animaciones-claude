@@ -1,8 +1,10 @@
 # Animating Clawd
 
-Read this whole file before you draw anything. It covers how to make a short cartoon (hand-painted watercolor by default, or any other look), starring Clawd, any character you design, or no character at all: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
+Read this whole file before you draw anything. It covers how to make a short cartoon (in whatever look the video calls for), starring Clawd, any character you design, or no character at all: the rules and animation principles that make it look good, the workflow that catches mistakes, and the full reference for the character and the engine.
 
 The person prompting you decides **what** the video is about. This guide decides **how** it's made. If they ask for something the rules below forbid (a caption, say), do what they ask.
+
+**Always packed with details.** Every video, whatever its look or mood, is crowded with details: lots of them, in every layer, all the time. Some come from what is being said or sung (a notepad that rewrites itself with every order, a counter that climbs, props that appear on their word), others make the place live on its own (a cat asleep on the sofa, a fly, a neighbour at work). Both kinds, always, many more than feels necessary (rule 8).
 
 **Nothing is a hard limit, and no label is a cage.** Looks, styles, moods, techniques, 2D and 3D, the presets and the helpers of this kit are all ingredients: mix them, bend them or replace them whenever the video gains from it, within a shot or across the video. A request for a style ("watercolor", "calm", "K-pop") tells you what the person is after; if the song and the context call for something else or a blend, go for it, and tell them what you chose and why. The one thing that never bends is the viewer: whatever you mix has to read, feel intended and serve the song.
 
@@ -38,7 +40,7 @@ The goals and rules below apply to every mood; where a rule depends on the mood,
 
 Every rule below serves one of three goals.
 
-- **Handmade.** The video should look drawn by hand, frame by frame, in a medium that feels intended (one look or a deliberate mix): in the watercolor look, brush strokes and ink lines that boil; in any look, no lettering.
+- **Handmade.** The video should look drawn by hand, frame by frame, in a medium that feels intended (one look or a deliberate mix), with linework that boils where the look has it; in any look, no lettering.
 - **Alive.** Something is always moving and something is always happening. Faces act instead of snapping, characters are big enough to feel, and the world is full of details to discover.
 - **One piece.** It's one short film, not a pile of clips. Plan it before you draw it, and link every scene to the next.
 
@@ -48,9 +50,9 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 
 ### 1. The medium is solid: one look, boil, depth that serves the video
 
-- **Pick the look first.** Watercolor is the default, not the only option: `look` in `registerScene` switches how every `paint()`, `inkLine()`, paper and grain render (see Looks in the Engine section), and a video can add its own look. Choose what serves the song. One coherent look is the simple default; mixing is just as valid when it helps: a section in another look, one element drawn in a different one (`withLook()`), 2D characters over a 3D world, a look invented for this video.
+- **Pick the look first. The default for every kind of video (comedy, music videos, explainers) is motion graphics packed with details, literal and ambient** (see rule 8): it is what the team likes most. It stays a starting point, not a cage: when the context of a video calls for another look, a mix or a look invented for it (paper cut-out, screen print, crayon, stop-motion clay, comic halftone...), use that and say why. A scene that sets no `look` renders in motion graphics too; set it explicitly anyway, and never pick one by habit. 3D inside a 2D video is welcome whenever it helps (a 3D camera move, a 3D object or world behind 2D characters, see rule 1 and `CAM3` in the Library). What lost clearly was replacing the whole video with a separate 3D pipeline (Blender, ready-made models, motion capture): every detail needed a model, so the frames came out bare, and captured motion looked stiff and slow next to cartoon timing. `look` in `registerScene` switches how every `paint()`, `inkLine()`, paper and grain render (see Looks in the Engine section), and a video can add its own look. Choose what serves the song. One coherent look is the simple default; mixing is just as valid when it helps: a section in another look, one element drawn in a different one (`withLook()`), 2D characters over a 3D world, a look invented for this video.
 - **Draw everything through `paint()` and `inkLine()`,** so the look applies to all of it. Characters get flat `wash` colour plus an ink outline. Backgrounds get soft `fill` shapes, usually with no outline or a thin one. Never call p5 shapes (`rect`, `ellipse`, `fill()`) directly: they skip the look, and in watercolor they read as 2000s Flash.
-- **Finish every drawing.** A prop or a set is not done at one outlined shape: give it secondary shapes (panels, seams, buttons, marks), light and shade (a highlight and a darker side), wear or texture, and a little secondary motion. The focal pieces get the most finish, the background less, but never none.
+- **Finish every drawing.** A prop or a set is not done at one outlined shape: give it secondary shapes (panels, seams, buttons, marks), light and shade (a highlight and a darker side), wear or texture, and a little secondary motion. Characters above all: shade each body part with `celFill()` (cel shading, works in every look and inside split screens), draw the silhouette heavier than the inner detail, and give them secondary construction (iris and glint, strands of hair, folds and stitches, fingers). The shopkeeper in `src/characters.js` is the reference. The focal pieces get the most finish, the background less, but never none.
 - **The linework boils.** `jit()` and `random()` are reseeded 12 times a second (`BOIL`), so every drawing wobbles slightly, like hand-drawn animation. That's the look; don't fight it. For anything that must stay put from frame to frame (star positions, tuft heights), use `hash(i)`. Give each separate element its own seed with `boilSeed(key)` (see Engine), or one moving thing makes everything drawn after it jitter.
 - **2D, 3D or both: whatever serves the video.** Depth can come from overlap, scale and colour (farther = smaller, bluer, paler), from perspective, or from real 3D (WEBGL geometry, shaders, a 3D section behind 2D characters). Make every mix look intended: a 3D element shares the palette and light of the rest, unless the contrast is the point. Clawd and the cast are 2D rigs: they turn through **drawn key views** (front → 3/4 → side → back 3/4 → back), like a cartoon model sheet (`turn()`, `spinView()`); rotating their drawing in perspective looks broken, so a character that must turn in 3D is built in 3D.
 - **Light is the one exception.** p5.brush mixes colour like pigment, so a yellow glow painted over blue turns green, and a thin wash over it turns grey. Use `glow()` for anything that shines: it adds real light, under the paper grain.
@@ -58,8 +60,9 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 
 ### 2. No text, except the lyrics
 
-*The lyrics are the one text layer, on by default: physical words spread over the scene (see "Physical Lyrics & Continuous Camera"). Everything below is about any other text.*
+*The lyrics are the one text layer, on by default: physical words spread over the scene (see "Physical Lyrics & Continuous Camera"). Everything below is about any other text. In an explainer, the formulas, code and labels being taught are content too, like the lyrics (see "Explainers").*
 
+- **No credits or end cards.** The videos are made for the person's own use. If a video will ever be published, any third-party asset it uses (models, fonts, music) may need its author credited under its license: add the credits then.
 - **Show it, don't write it.** Models overuse text. No captions, no titles, no labels on objects, no signs, no speech bubbles with words, no words on screens, no "ZZZ" typed in a font.
 - **Clawd's reactions are painted marks, never letters**: `!`, `?`, zzz, sweat, hearts, a bulb, a rain cloud. Use the emotes (see the reference).
 - **A sign that repeats the story is the classic failure.** If Clawd holds a sign saying "I'm lost", the shot has failed. Show Clawd being lost: looking left, then right, the map upside down, a sweat drop.
@@ -91,6 +94,7 @@ For a worked example, see how the demo times its ending, at the end of this guid
 ### 5. Alive
 
 - **Nothing is ever still.** Every emotion has its own idle motion (`feel()`), cameras drift or push, grass sways, stars twinkle and the linework boils. A frozen frame reads as a bug.
+- **Only the speaker's mouth moves.** A mouth moves only while its own character is talking; when the speaker is off screen (the other end of a phone call), nobody on screen moves their lips. Decide who says each line from what the dialogue means (on a phone call, whoever answers says the first "hola"), never by guessing or by the look of the transcription; grouping words by voice doesn't work when one actor plays several parts. If a line is ambiguous, ask.
 - **Faces act, they never snap.** Change moods with `emotions()`. It does anticipation, a squint, a take and overshoot around every change. Never swap `eyes`/`mouth` by hand between two frames.
 - **Move like a cartoon, not a machine.** Every move follows the animation principles in the next section.
 - **Clawd is big.** In a medium shot, `u` is about 20–28 (Clawd is 10u wide, 8u tall). In a close-up it's 40–70. Tiny Clawds (u < 12) are for wide establishing shots only, and never for the whole video.
@@ -128,6 +132,7 @@ Every video, by default, is packed with details that refer to what is shown and 
 - **Details never steal the read.** They are smaller, lower in contrast or slower than the focal action, or they sit at the edges; the one that is the gag of the moment pops in on its beat or word and leaves the stage to the focal read. Rule 4 still decides where the eye goes: details are what it finds on the second look.
 - **Pause test.** Any frame, paused at random, should offer several things to discover beyond the focal action, and each should make sense for that moment of the song.
 - **Aim high on density.** In a busy section, a still should hold eight or more things to discover across the layers, and something new should arrive every couple of seconds. A background of plain colour bands is a missed chance, not a background. When in doubt, add another reference.
+- **Both kinds of detail.** Literal details draw what is being said the instant it is said (an empanada flying on the word, a counter going up); ambient details make the world live on its own (a cat on the sofa that wakes up, follows the action and ends up stealing the payoff, a fly circling, a helper at work in the back, a TV whose picture answers the dialogue). Keep adding both: when a video feels full, it still has room for more. Every ambient detail has to belong to the place and the moment: a cat fits on a living-room sofa, but in a classroom the life comes from what a classroom has (classmates, a teacher, a bell, notes being passed). Never carry a detail over from another video because it worked there, and keep each one at the weight it deserves: a detail stays in the background unless the story needs it.
 
 ---
 
@@ -269,6 +274,10 @@ Finish: `--blur=4` renders 4 subframes per frame and averages them (motion blur,
 | Chatty | `src/characters.js` | a chatbot living in a speech bubble. `chatty(x, y, r, t, {mood})` |
 | Person | `src/characters.js` | a generic everyday human to cast as "me", "a person", "my neighbour". `person(x, y, u, t, {aL, aR, walk, mood, col})`; returns `{handL, handR}` so props sit in its hands |
 | Serpent | `src/characters.js` | a giant snake with glowing eyes and fangs. `serpent(t, hx, hy, s, rise, rage)`; `rise` lifts it into view, `rage` opens the jaws with a red glow |
+| Shoggoth | `src/characters.js` | a many-eyed blob of tentacles that can wear a smiley mask. `shoggoth(x, y, s, t, {mask, slip, rage, eyes, look, col})`; `slip` slides the mask off, returns `{mask, top}` |
+| Gato | `src/characters.js` | a big tabby cat sitting, with a paw that reaches out to hold something. `gato(x, y, s, t, {paw, look, mood})`; returns `{paw}` |
+| Chinchilla | `src/characters.js` | a tiny fluffy rodent. `chinchilla(x, y, s, t, {sq, look, mood: calm|shock})` |
+| Shopkeeper | `src/characters.js` | a stocky counter worker (paper cap, moustache, apron) in simple rounded shapes, with floating hands (no arms, so poses never break) who acts through the brows. `shopkeeper(x, y, u, t, {mood, hL, hR, rotL, rotR, holdL, holdR, phone, flush, pale, beard, band, vein, twitch})`; `holdR: (x, y) => ...` draws what a hand holds, `shopkeeperMoods(t, keys)` acts mood changes like `emotions()`; returns `{handL, handR, head, cord}` |
 
 ## Library
 
@@ -307,9 +316,23 @@ Painted pieces promoted from earlier videos, in `src/fx.js` (options go in a tra
 | `train(x, y, ang, t, u)` | a locomotive that follows any track angle |
 | `robot(x, y, s, k, t)` | a GPU card that unfolds into a robot |
 | `curtain(k, t)` | a theatre curtain coming down |
+| `proscenium(t, {k, lit})` | a stage frame around the screen: side curtains, arch with valance, footlights |
+| `neuralNet(x, y, w, h, layers, t, {fwd, bwd})` | a layered net diagram with a forward (warm) and backward (cool) pulse; returns node positions |
+| `consCells(x, y, s, n, k)` | a chain of Lisp cons cells built box by box, ending in an empty cdr |
+| `loom(x, y, w, h, t, k)` | a weaving loom whose cloth grows while threads above branch like a tree of futures |
+| `blackHole(x, y, r, t)` | a dark core with a turning accretion disk |
+| `treadmill(x, y, w, t, speed)`, `birdcage(x, y, s, open)`, `operaSails(x, y, s)`, `fence(x, y, w, h, smash)`, `guitar(x, y, s, rot, strum)`, `bomb(x, y, s, t, fuse)`, `mainframe(x, y, s, t)` | a treadmill with a running belt, a hanging bird cage, opera-house shell roofs, a striped safety fence that bursts into planks, an acoustic guitar, a cartoon bomb with a burning fuse, a room-sized old computer with tape reels |
+| `chalkboard(x, y, w, h, {board, board2, frame})` | a framed chalkboard with erased smudges and a chalk tray |
+| `chalkLine(t, t0, t1, P, col, sw)`, `chalkTick`, `chalkCross`, `chalkBox`, `chalkArrow` | chalk strokes that draw themselves on from t0 and stay: a path, a tick, a cross, a box, an arrow |
+| `empanada(x, y, s, rot, {flavor, bite})`, `choclo(x, y, s, rot, {husk})` | an empanada with its repulgue and flavour mark (carne, choclo, verdura, queso, atun); a corn cob |
+| `rotaryPhone(x, y, s, t, {dial, lifted, ring})`, `handset`, `handsetPts`, `coilCord(a, b, o)` | a rotary phone that can ring, its handset, and a coiled cord between any two points |
+| `notepad(x, y, w, h, t, {lines, mess, split})`, `pencil(x, y, s, rot, {broken})` | a spiral notepad being written on (returns the pencil point) and a pencil |
+| `clayOven(x, y, s, t, {fire})`, `tvSet(x, y, w, t, screen)` | a clay dome oven with a fire; an old TV whose picture is a callback |
+| `dryRun(fn)` (`src/core.js`) | runs a drawing function with painting disabled, to learn where something will be this frame (see "Frames are pure functions of time") |
+| `celFill(pts, {col, shade, hi, k, light})` (`src/core.js`) | a shape with cartoon cel shading: a shadow crescent away from the light, an optional highlight and the outline; no mask needed |
 | `CAM3`, `proj3(x, y, z, c)`, `grid3(t, o)`, `racks3(t, c)` | a small 3D perspective camera, a 3D grid floor, and server racks along a 3D corridor |
 
-Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `physicalLyrics()`, `hopAcross()`, `wordLetters()` and the camera directors (`src/kinetic.js`); `MOODS`, `moodAt()`, `beatCam()` (beat kicks, shake, and a new framing every `pace` bars) and `moodTime()` (drawings on twos when the mood asks for it) in `src/styles.js`.
+Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `physicalLyrics()`, `hopAcross()`, `wordLetters()` and the camera directors (`src/kinetic.js`); `mathLine()` and `writeOn()` (formulas with superscripts, subscripts and ∑ limits, written on character by character), `subtitles()` (the current phrase with each word lighting up as it is said) and `mathFont()` (`src/kinetic.js`); `MOODS`, `moodAt()`, `beatCam()` (beat kicks, shake, and a new framing every `pace` bars) and `moodTime()` (drawings on twos when the mood asks for it) in `src/styles.js`.
 
 **Render cost:** watercolour `fill`s and `glow()`s are what make frames slow. Big flat areas (skies, floors) render fast with `wash`; keep fills for the few shapes that show the texture, and use `spark(..., {lite: true})` when dozens are on screen.
 
@@ -341,10 +364,13 @@ Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `phy
 
 - **Frames render in parallel and out of order.** A shot is `fn(t, lt, dur)` and must draw the same frame for the same `t`, every time. No state carried between frames, no counters, no `Math.random()`, no physics that integrates frame by frame. Compute everything from `t`, in closed form (the helpers below do this for you).
 - Randomness: `hash(i)` for stable per-object values, and `jit(a)`/`random()` for boil (they change 12 times a second).
+- **Anything that changes in jumps goes through `step(t, rate)`** (the index of the step t falls in), never `Math.floor(t * rate)`: blinking lights, flickers, per-frame shakes, anything held. Motion blur renders each frame from subframes a little before and after it, and a `Math.floor` step that falls between them shows up as both values at half opacity (a ghost). `onTwos()` and `shakeXY()` already use it; pass `step` the time in seconds, not a sped-up time.
 - **Seed each element with `boilSeed(key)`.** Each boil drawing holds for two frames, so anything that isn't moving must draw the same in both. But a moving thing uses a different amount of randomness each frame, which shifts the stream for everything drawn after it, and all of that re-boils every frame and looks jittery.
   - `boilSeed(key)` restarts the stream from the boil frame and a key that stays the same every frame (any string or number, unique within the frame).
   - Call it before each separate element: each background layer, prop and effect.
   - `clawd()` seeds itself and each of its parts, then reseeds when it's done, so nothing drawn after it depends on its pose. Its key is its call order; set `boilKey` if characters come and go mid-shot.
+- **Never read what an earlier frame computed.** When one drawing needs a position another one decides later in the frame (a hand that writes on a notepad drawn in front of it), compute it in the same frame: lay the other out in a dry run with painting disabled (`dryRun()` in core.js) instead of keeping it in a variable between frames, which breaks parallel rendering.
+- **Smooth poses by sampling time, not by remembering.** To ease a character between poses that switch abruptly in code, average its pose at `t` and a few instants before (a tenth of a second is enough): quick, never jumping, and still a pure function of `t`.
 - **Each shot paints the whole frame,** background included. The paper texture is under everything and the grain is multiplied over the top, so leaving paper showing is a valid look.
 - **Canvas:** 1920×1080, origin top-left, y down.
 - `LOOPS.name = t => {...}; LOOPS.name.len = 4;` makes a standalone loop (tests, GIFs, sheets), rendered with `--loop=name`.
@@ -355,9 +381,9 @@ A look is how the drawing calls render; scenes, characters and props stay the sa
 
 | look | what it is |
 |---|---|
-| `watercolor` (default) | p5.brush pigment: bleeding fills, boiling tapered ink, paper texture and grain. About 1–5 s a frame |
+| `watercolor` | p5.brush pigment: bleeding fills, boiling tapered ink, paper texture and grain. About 1–5 s a frame |
 | `flat` | a clean vector cartoon: solid fills, even outlines, plain background. About 0.05 s a frame, so it is also the draft preview (`--draft`) |
-| `motion` | motion graphics: crisp vector with perfectly still lines (no boil) on a dark ground. Pairs with the motion-graphics kit below |
+| `motion` (default) | motion graphics: crisp vector with perfectly still lines (no boil) on a dark ground. Pairs with the motion-graphics kit below |
 
 Looks mix inside a frame: `withLook('flat', () => { ... })` draws whatever is inside in another look (a crisp UI over a painted world, a painted memory inside a flat scene); the paper and grain stay the scene's.
 
@@ -406,6 +432,7 @@ To add a look, add an entry to `LOOKS` in `src/core.js` and, if it needs a new w
   - `wash` at 255 is exact colour; lower opacities mix.
   - p5 `push()/pop()/translate()/rotate()/scale()` work with all brush calls.
   - Cost is the number of `fill` shapes and strokes: hundreds are fine, thousands are not. Aim for ≤ 1.5 s per frame. The render log prints ms/frame.
+  - Split screens: `masked()` does clip watercolor `wash` shapes if you call `flushBrush()` before it and again inside it, before it closes, but never fills or ink. So a panel masks its big washes (walls, floors) and keeps every inked prop inside its own panel, skipping the ones that would cross the divider.
   - Some scenes make p5.brush log five `WebGL: INVALID_OPERATION ... not from the associated program` warnings once per page. They're harmless (frames come out identical). Any other page error is real.
 
 ### Time and motion (all pure functions of t)
@@ -424,6 +451,7 @@ To add a look, add an entry to `LOOKS` in `src/core.js` and, if it needs a new w
   - `ring(t, [t0, t1, ...])`: one `spring` kick per event time.
   - `arcPt(p0, p1, h, k)`: a point on a thrown arc.
   - `onTwos(t)`: holds each drawing for two frames. Wrap a shot's `t` in it for a snappier, hand-drawn feel.
+  - `step(t, rate)`: which step of `rate` per second t is in, safe under motion blur (see "Frames are pure functions of time").
 - **Camera:**
   - `camBegin(cx, cy, zoom, rot)` … `camEnd()`: world point (cx, cy) lands at screen centre. One level only; always pair them.
   - `toScreen(x, y)`: world → screen while a camera is active. Use it to aim an iris at a character.
@@ -434,6 +462,7 @@ To add a look, add an entry to `LOOKS` in `src/core.js` and, if it needs a new w
   - `flash(k, colour)`: a full-frame flash.
 - **Lettering** (only if you must, see "No text"):
   - `letter(txt, x, y, size, colour, {pop, rot, alpha, screen})`
+  - Formulas and maths: use `mathLine()`/`writeOn()`, or `font: mathFont(size)` in `letter()`. The hand-drawn fonts lack symbols like ⇒ ∧ ∑ ∀; the canvas takes each missing glyph from Noto Sans Math, which the studio loads for that.
   - `sfx(txt, x, y, size, colour, age)`
   - Both are composited at `flushLetters()`, after the shot, so by default text sits on top of everything. Calling `flushLetters()` mid-shot paints the text queued so far into the frame, and whatever is drawn afterwards covers it: use it to put a character in front of a word, or a wipe or iris over the text.
 
@@ -549,11 +578,21 @@ clawd(x, y, 24, { ...feel('proud', t), aR: 1.2, armR: (u, sw) => paint(starPts(u
 The kit doesn't need music, but it's built for it:
 
 1. Register your scene with `bpm`, `duration`, `offset`, and `audio` using `registerScene('my_scene', { ... })`. Every idle, dance and `pulse()` then locks to the song.
-2. Put the audio in `audio/` (e.g. `audio/my_song.mp3`) or project root and reference it in the scene definition (`audio: 'audio/my_song.mp3'`) or pass `--audio=`. If the file is not found, prompt the user with the exact folder path to place it. Once export is complete, if the track was specific to that one-off video or test (unlike permanent base assets), suggest removing or archiving the file locally to maintain workspace hygiene.
+2. Put a one-off video's audio in `projects/` next to its scene (e.g. `projects/my_song.mp3`; `audio/` is for the tracks of the versioned scenes in `src/scenes/`) and reference it in the scene definition (`audio: 'projects/my_song.mp3'`) or pass `--audio=`. If the file is not found, prompt the user with the exact folder path to place it. Leave it there after export: the user deletes files in `audio/`, `out/` and `projects/` when they choose, so never offer or suggest removing them.
 3. Land hits, cuts and takes on beats (`beatN`, `pulse`). Cut on bar lines for big changes, and give each musical phrase its own visual.
 4. **Lyrics are physical.** Sync them with `tools/sync_lyrics.py` and load the generated script with the scene (`studio.html?script=projects/x.lyrics.js,projects/x.js`, same for `render.mjs --script=`). Act the meaning of a line too, not just its words.
-5. **No audio, or only a voice?** `tools/make_bed.py` builds an instrumental bed around a moment (intro, build-up, drop at a chosen second, fade) and, given a voice, mixes it on top and ducks the music while it talks. `audio/generate_music.py` makes a fixed demo song and *spoken* voice (TTS), never singing; for a sung song, suggest Suno, Udio or ElevenLabs Music.
-6. **Audio-reactive visuals**: `tools/audio_envelope.py` writes a loudness envelope script; `envelopeAt(id, t)` returns 0..1, for waveforms, mouths that move while someone talks, things that pulse with a voice.
+5. **No audio, or only a voice?** `tools/make_bed.py` builds an instrumental bed around a moment (intro, build-up, drop at a chosen second, fade), a calm loop under a long narration (`--style=calm`) or a light cumbia for comedy and everyday scenes (`--style=cumbia`), can cut the music with a record scratch for a comedy beat (`--stop=a:b`), and, given a voice, mixes it on top and ducks the music while it talks. Its drum and synth voices live in `tools/synth.py`, to reuse in any other audio tool. Spoken voice (TTS, never singing) comes from `tools/narrate.py`; for a sung song, suggest Suno, Udio or ElevenLabs Music.
+6. **Explainers and voice-overs**: `tools/narrate.py` speaks a script written in blocks and writes the word timings, one line per block (with its id), so each shot starts on its block and details land on the words.
+7. **Audio-reactive visuals**: `tools/audio_envelope.py` writes a loudness envelope script; `envelopeAt(id, t)` returns 0..1, for waveforms, mouths that move while someone talks, things that pulse with a voice.
+
+## Explainers
+
+A lesson or explanation is the same paradigm with a narration in place of a song: the voice decides the pace, block by block.
+
+- **Script first, in blocks.** `tools/narrate.py` speaks it and writes one timed line per block: each shot or panel starts on its block, and each formula, drawing or gag lands on the word that names it (`wordAt([block], word)` finds a word inside one block).
+- **What the lesson teaches is text on screen**: formulas, code and short labels, written on as they are said (`writeOn()`), in the notation of the source material. Subtitles of the narration (`subtitles()`) help the viewer follow it. Everything else still follows rule 2.
+- **A setting that holds the whole lesson.** One board per topic along a continuous camera path, the lead beside it and a recap at the end worked well, both as a painted chalkboard and, in the default motion-graphics look, as dark cards whose code is written on in the course's notation, each with an animated metaphor next to it (a stack of plates for a stack, a photo for a metavariable). Keep the setting fitted to the subject.
+- **Still a cartoon, not slides.** Rule 8 applies in full: the board is the focal read, never the whole frame. Around it, details tied to the topic of that panel (props, background characters doing their own thing, chalk doodles that animate and react to what is said), changing as the lesson moves on, and a lead who acts the ideas (tries, fails, reacts, carries props) instead of only pointing. A couple of drawings per panel is not enough.
 
 ## Common failures
 
@@ -589,6 +628,7 @@ How the lyrics and the camera behave by default. Adapt all of it to the mood of 
      - `camOrbit(t, cx, cy, radius, zoom, speed)` for rotational perspective sweeps.
 2. **Typography as World Geometry**:
    - The lyrics are visual characters in the scene, not passive subtitles at the bottom. `physicalLyrics(t, lines, o)` places every word when it is sung, spread over the frame with a layout that changes line by line, and returns where each word is. Long lines (transcriptions often group a whole verse) are split into phrases of up to `maxWords` (default 6) at the sung pauses, so words stay big. `hopAcross(t, words)` makes a character land on each word as it is sung. With moods per section, pass `textAt: t0 => moodAt(t0, sections).text` so each line keeps the style of the mood it started in (words already on screen never restyle mid-flight). The karaoke pill (`lyrics` in the scene) remains as an option.
+   - **Dialogue and comedy too.** Spoken dialogue gets physical words by default, not a subtitle band: spread over the frame near whoever says them (in their panel in a split screen), landing on and bouncing off the characters and props, reacting to what happens. A bottom subtitle band is for long explanations (explainers). A speaker who is off screen (the other end of a phone call) is a voice, not a presence: their words come out small, in another colour, from the device or the edge of the frame they come through.
    - Use `wordPlatform(txt, x, y, size)` to compute physical bounds and allow Clawd to walk, hop, or dance across the words (`clawdOnWord(platform, frac, u, options)`).
    - Use `kineticWord(txt, x, y, size, t, options)` with motion presets (`'slam'`, `'spin'`, `'flyby'`, `'orbit'`, `'float'`).
 3. **Physical Character-Text Interactions & Reactions**:

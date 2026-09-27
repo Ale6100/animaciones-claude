@@ -1,6 +1,6 @@
 # Claude Animation & Music Video Studio
 
-An end-to-end toolkit and starter base for generating hand-drawn animations and **animated music videos** with Clawd, in a painted watercolor look or any other, inspired by [John Heibel's PDoomVideo](https://github.com/JohnHeibel/PDoomVideo) and [ClaudeAnimationBase](https://github.com/JohnHeibel/ClaudeAnimationBase).
+An end-to-end toolkit and starter base for generating hand-drawn animations and **animated music videos** with Clawd, in any look (watercolor, flat cartoon, motion graphics or one invented for the video), inspired by [John Heibel's PDoomVideo](https://github.com/JohnHeibel/PDoomVideo) and [ClaudeAnimationBase](https://github.com/JohnHeibel/ClaudeAnimationBase).
 
 Featuring an interactive browser studio with **real-time audio playback**, a **karaoke subtitle engine** with dynamic word-by-word gold highlighting, procedural music synthesis with Python, and high-definition offline rendering with headless Chrome + WebGL + FFmpeg.
 
@@ -12,12 +12,12 @@ Featuring an interactive browser studio with **real-time audio playback**, a **k
 
 1. **Music Video & Audio Engine**:
    - Integrated Web Audio & HTML5 Audio in `studio.html` with Play/Pause, Spacebar toggle, and bidirectional timeline scrubbing.
-   - Built-in Python music synthesizer ([`audio/generate_music.py`](audio/generate_music.py)) using `numpy` and `scipy` to produce custom 808/synthwave/funk beats, speech synthesis, and vocoder vocals.
+   - Built-in Python music synthesizer ([`tools/synth.py`](tools/synth.py), `numpy` and `scipy`): drum and synth voices that `tools/make_bed.py` arranges into instrumental beds.
    - Support for dropping any custom `.mp3` or `.wav` track (from Suno, Udio, YouTube, etc.).
 2. **Physical Lyrics**:
    - Word-level timings from the song ([`tools/sync_lyrics.py`](tools/sync_lyrics.py)); each word lands on screen as it is sung and reacts to the characters (see *The Adaptive Music Video*).
    - Optional karaoke pill ([`src/lyrics.js`](src/lyrics.js)) that highlights each word in gold (`PAL.ochre`) as it is sung.
-3. **Interchangeable looks**: how shapes and lines render (watercolor, flat vector cartoon, or a new one) is a layer of its own, chosen per scene, so the project isn't tied to one style. The flat look also serves as a fast draft preview for iterating on motion (see `ANIMATION_GUIDE.md`, Looks).
+3. **Interchangeable looks**: how shapes and lines render (motion graphics, flat vector cartoon, watercolor, or a new one) is a layer of its own, chosen per scene, so the project isn't tied to one style. Every kind of video starts from motion graphics full of literal and ambient details, and moves away from it when its context calls for something else (`ANIMATION_GUIDE.md`, rule 1). The flat look also serves as a fast draft preview for iterating on motion (see `ANIMATION_GUIDE.md`, Looks).
 4. **Clean Generator Architecture**:
    - Each scene renders its frames into its own `out/frames/<scene>/` (resumable: an interrupted render continues where it stopped, and frames lost to GPU or memory pressure are retried or left for the next run of the same command). `.gitignore` is pre-configured so that generated video outputs (`out/`, `*.mp4`, rendered frames), custom audio tracks, and project-specific storyboards are never committed to your repository.
 
@@ -29,7 +29,7 @@ Featuring an interactive browser studio with **real-time audio playback**, a **k
 * [Node.js](https://nodejs.org) (v18+)
 * [Google Chrome](https://www.google.com/chrome/)
 * [FFmpeg](https://ffmpeg.org/)
-* *(Optional)* Python 3 with `numpy` (beat-grid analysis), `faster-whisper` (lyric sync) and `scipy` (procedural song generation)
+* *(Optional)* Python 3 with `numpy` (beat-grid analysis), `faster-whisper` (lyric sync), `scipy` (procedural song generation) and `edge-tts` (spoken narration)
 
 ### 2. Install Dependencies
 ```bash
@@ -87,6 +87,7 @@ How it works:
 * **Moods per section**: [`src/styles.js`](src/styles.js) has mood presets (energetic, narrative, calm, epic, comedy) and blends between them, so a calm verse can ease into an explosive chorus. They are starting points: each video overrides, mixes or adds moods and invents its own transitions.
 * **Physical lyrics by default**: words appear as they are sung, spread over the frame, and react to the characters (`physicalLyrics`, `hopAcross`, `wordLetters` in [`src/kinetic.js`](src/kinetic.js)). Timings come from [`tools/sync_lyrics.py`](tools/sync_lyrics.py). The karaoke pill is still available.
 * **A world full of details**: every shot is packed with references to what is shown and sung at that moment (the culture the song comes from, its jargon and objects, visual puns on the lyrics), in every layer of the frame and never stealing the focal action. Each video starts from a reference bank per section (`ANIMATION_GUIDE.md`, rule 8); `cues()` in [`src/comedy.js`](src/comedy.js) makes the world answer a word when it is sung.
+* **Explainers**: a narration can take the place of the song (lessons, voice-overs): the script is spoken block by block, what is taught is written on screen as it is said, with subtitles, and the frame stays a living cartoon around it (`ANIMATION_GUIDE.md`, Explainers).
 * **Literal comedy**: over casual speech, whatever is said appears the instant it is said and gets exaggerated ([`src/comedy.js`](src/comedy.js): `wordAt`, `popIn`, `snapAt`, `growAt`, `freezeAt`).
 * **Motion graphics, mixable**: [`src/motion.js`](src/motion.js) and the `motion` look add animated graphic design (lines that draw themselves, shapes that morph, masked reveals, cascades, title-style type) that combines with everything else, such as hand-drawn characters inside a motion-graphics world ([`src/scenes/motiongfx.js`](src/scenes/motiongfx.js)).
 * **No fixed limits**: looks, styles, moods, techniques, 2D and 3D are ingredients that mix whenever the video gains from it; a requested style is what the person is after, not a cage, and the AI explains any change it makes. Characters are optional too: a video can have a lead, an ensemble or none (pure typography, shapes, places), decided per song. See the top of `ANIMATION_GUIDE.md`.
@@ -107,9 +108,9 @@ How it works:
    - Karaoke subtitles and visual cues in your scene script must **strictly match** the exact timestamps of the vocal track. Always verify that lyrics start and end at the exact seconds the vocalist sings.
 
 ### 📁 Ubicación y Gestión de Archivos de Audio
-1. **Ubicación canónica**: Las canciones y pistas de audio deben colocarse en la carpeta `audio/` (por ejemplo, `audio/mi_cancion.mp3`) o en la raíz del proyecto, y referenciarse en la definición de la escena (`audio: 'audio/mi_cancion.mp3'`).
+1. **Ubicación canónica**: El audio de un video puntual va en `projects/`, junto a su escena y sus letras (por ejemplo, `projects/mi_video.mp3`); `audio/` queda para las pistas de las escenas versionadas de `src/scenes/`. En los dos casos se referencia en la definición de la escena (`audio: 'projects/mi_video.mp3'`). Sirve cualquier formato que lean Chrome (el estudio) y ffmpeg (el render) (`.mp3`, `.wav`, `.ogg`, `.weba`...).
 2. **Aviso proactivo cuando no está presente**: Si el usuario solicita un video musical y la pista de audio especificada no existe en el disco, la IA debe indicárselo de inmediato, señalando la carpeta exacta donde debe depositar el archivo `.mp3` o `.wav` antes de continuar.
-3. **Exclusión de Git y sugerencia de limpieza puntual**: Los formatos de audio (`*.mp3`, `*.wav`, `*.ogg`, `*.flac`) están excluidos en `.gitignore` para prevenir infracciones de derechos de autor (DMCA) y peso innecesario en el repositorio. En casos donde la canción sea específica o puntual para un video o prueba concreta (a diferencia de recursos o temas base del proyecto), una vez generado y exportado el video final la IA debe recordarle o sugerirle al usuario eliminar o archivar localmente dicho archivo para mantener el espacio de trabajo limpio.
+3. **Exclusión de Git**: Los formatos de audio (`*.mp3`, `*.wav`, `*.ogg`, `*.flac`, `*.weba`, `*.webm`, `*.m4a`, `*.opus`, `*.aac`) están excluidos en `.gitignore` para prevenir infracciones de derechos de autor (DMCA) y peso innecesario en el repositorio. El usuario borra los audios, videos y proyectos puntuales (`out/`, `projects/`) cuando quiere; la IA no le sugiere limpiarlos.
 
 ---
 
@@ -118,17 +119,18 @@ How it works:
 Creating a music video on **any topic** without cluttering the repository takes 3 clean steps:
 
 1. **Provide the Audio Track**:
-   - Place your real vocal/instrumental track in `audio/my_song.mp3` (recommended: Suno/Udio).
-   - No track, or only a voice recording? `tools/make_bed.py` builds an instrumental bed (with the voice mixed on top and the music ducking under it). Generated voices are *spoken* TTS, never sung.
+   - Place your real vocal/instrumental track in `projects/my_song.mp3` (recommended: Suno/Udio).
+   - No track, or only a voice recording? `tools/make_bed.py` builds an instrumental bed (with the voice mixed on top and the music ducking under it); `--style=calm` gives a soft loop with no drop, for long narrations, and `--style=cumbia` a light cumbia for comedy; `--stop=a:b` cuts the music with a record scratch. Generated voices are *spoken* TTS, never sung.
+   - An explainer or voice-over: write the script in blocks and `tools/narrate.py` speaks it (edge-tts, Microsoft's online voices: the script is sent to their service) and writes the word timings like `sync_lyrics.py`, with one line per block so shots can be timed to blocks.
    - Measure its beat grid and sections before writing any shot, so `bpm`, `offset` and cuts land on the music:
      ```bash
-     python tools/analyze_audio.py audio/my_song.mp3            # tempo, first downbeat, energy per bar, likely sections
-     python tools/analyze_audio.py audio/my_song.mp3 --bpm=168.5 # re-run with a known/refined tempo
+     python tools/analyze_audio.py projects/my_song.mp3            # tempo, first downbeat, energy per bar, likely sections
+     python tools/analyze_audio.py projects/my_song.mp3 --bpm=168.5 # re-run with a known/refined tempo
      ```
      The tempo estimate can land a fraction of a BPM off, which drifts by whole beats over a full song: refine it with `--bpm=` until the printed phase per 20 s window stays stable across the track.
    - Get word-level lyric timings (writes `projects/my_video.lyrics.js`). It uses Whisper `medium` by default, because `small` mishears names and jargon far more often; keep it as the default. `--prompt-file=lyrics.txt` with the known lyrics improves accuracy a lot, and when they're unknown, a short line with the song's topic and vocabulary (names, technical terms) still helps:
      ```bash
-     python tools/sync_lyrics.py audio/my_song.mp3 --id=my_video
+     python tools/sync_lyrics.py projects/my_song.mp3 --id=my_video
      ```
      When the real lyrics arrive after the transcription (or a second opinion on misheard words), put them onto the existing word timings instead of transcribing again: one line per transcribed line as `<start time> | <corrected text>`. Treat any outside lyrics source with care too, and keep what sounds right for the song.
      ```bash
@@ -144,7 +146,7 @@ Creating a music video on **any topic** without cluttering the repository takes 
        duration: 36, // seconds
        bpm: 124,     // tempo
        offset: 0,    // first downbeat in seconds
-       audio: "audio/my_song.mp3",
+       audio: "projects/my_song.mp3",
        lyrics: [
          [1.5, 4.6, "Booting in the spotlight, five million tokens deep!"],
          [5.0, 8.2, "Self-attention glowing while the world is fast asleep!"]
@@ -175,7 +177,7 @@ Creating a music video on **any topic** without cluttering the repository takes 
 ### 🎬 Storyboard y Dirección Creativa Adaptativa
 * **Storyboard dinámico a medida** (uno por producción, en `projects/`, ignorado por git): Cada producción tiene su propio guión técnico y visual. Una canción melancólica, un himno pop enérgico o una explicación conceptual seria exigen metáforas, ritmos, movimientos de cámara y paletas totalmente distintas; nunca se reutiliza una fórmula fija.
 * **Libertad e iniciativa artística**: La IA asume rol de director creativo, proponiendo giros visuales audaces, nuevos personajes, props y mecánicas originales. Ante pedidos breves o abiertos, profundiza y eleva la propuesta con criterio cinematográfico de calidad.
-* **Autonomía sobre el audio**: Si el usuario no provee una pista, se genera el audio necesario (vía síntesis procedural en [`audio/generate_music.py`](audio/generate_music.py) o síntesis de voz) sincronizado con el guión.
+* **Autonomía sobre el audio**: Si el usuario no provee una pista, se genera el audio necesario (una base instrumental con `tools/make_bed.py` o una voz hablada con `tools/narrate.py`) sincronizado con el guión.
 
 ---
 
@@ -188,18 +190,18 @@ Creating a music video on **any topic** without cluttering the repository takes 
 | [`src/timeline.js`](src/timeline.js) | Multi-scene registry (`registerScene`, `loadScene`), shot dispatcher, and dynamic karaoke painter |
 | [`src/config.js`](src/config.js) | Default starter configuration (title, duration, BPM) |
 | [`src/lyrics.js`](src/lyrics.js) | Default starter karaoke subtitles array |
-| [`src/kinetic.js`](src/kinetic.js) | Physical lyrics and kinetic typography, continuous camera director, and character-text interactions |
-| [`src/characters.js`](src/characters.js) | The cast beyond Clawd (Nota, Pip, Person, Serpent, Clip, Chatty), promoted from earlier videos |
+| [`src/kinetic.js`](src/kinetic.js) | Physical lyrics and kinetic typography, continuous camera director, character-text interactions, and formulas and subtitles for explainers |
+| [`src/characters.js`](src/characters.js) | The cast beyond Clawd (Nota, Pip, Person, Serpent, Clip, Chatty, Shoggoth, Gato, Chinchilla, Shopkeeper), promoted from earlier videos |
 | [`src/comedy.js`](src/comedy.js) | Literal-comedy helpers: when a word is said, pop-ins, abrupt changes, absurd growth, freezes |
 | [`src/fx.js`](src/fx.js) | Shared library of painted backgrounds, effects and props promoted from earlier videos |
 | [`src/styles.js`](src/styles.js) | Mood presets and their per-section blending and beat-locked camera energy |
-| [`src/core.js`](src/core.js) | Watercolor engine, p5.brush setup, camera, dynamic rhythm state, and paper shaders |
+| [`src/core.js`](src/core.js) | Rendering engine and its looks (motion graphics by default, watercolor, flat), p5.brush setup, camera, dynamic rhythm state, and paper shaders |
 | [`src/clawd.js`](src/clawd.js) | Clawd character rig: views, limbs, emotes, eyes, and procedural kinematics |
 | [`src/motion.js`](src/motion.js) | Motion-graphics kit: easing, cascades, draw-on lines, shape morphs, masks, kinetic type |
 | [`src/scenes/`](src/scenes/) | Built-in example scenes (`demo.js`, `claude_pop.js`, `showcase.js`, `literal.js`, `motiongfx.js`) |
 | [`projects/`](projects/) | Git-ignored directory for custom user videos and song scenes |
-| [`audio/`](audio/) | Audio folder (git-ignored audio tracks) and procedural synthesis ([`generate_music.py`](audio/generate_music.py)) |
-| [`tools/`](tools/) | Helper utilities: [`analyze_audio.py`](tools/analyze_audio.py) measures a song's beat grid, energy per bar and sections (needs `ffmpeg` and `numpy`); [`sync_lyrics.py`](tools/sync_lyrics.py) transcribes word-level lyric timings (needs `faster-whisper`); [`fix_lyrics.py`](tools/fix_lyrics.py) puts corrected lyrics onto those timings; [`make_bed.py`](tools/make_bed.py) builds an instrumental bed around a drop and mixes a voice over it; [`audio_envelope.py`](tools/audio_envelope.py) writes a loudness envelope for audio-reactive visuals (`envelopeAt`) |
+| [`audio/`](audio/) | Tracks of the versioned scenes (e.g. `claude_pop`), git-ignored; one-off videos keep their audio in `projects/` |
+| [`tools/`](tools/) | Helper utilities: [`analyze_audio.py`](tools/analyze_audio.py) measures a song's beat grid, energy per bar and sections (needs `ffmpeg` and `numpy`); [`sync_lyrics.py`](tools/sync_lyrics.py) transcribes word-level lyric timings (needs `faster-whisper`); [`fix_lyrics.py`](tools/fix_lyrics.py) puts corrected lyrics onto those timings; [`make_bed.py`](tools/make_bed.py) builds an instrumental bed (around a drop, or a calm loop) and mixes a voice over it, with the drum and synth voices of [`synth.py`](tools/synth.py); [`narrate.py`](tools/narrate.py) speaks a script with word timings (needs `edge-tts`); [`audio_envelope.py`](tools/audio_envelope.py) writes a loudness envelope for audio-reactive visuals (`envelopeAt`) |
 | [`ANIMATION_GUIDE.md`](ANIMATION_GUIDE.md) | Style guide and complete API reference |
 
 ---

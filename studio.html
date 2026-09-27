@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Clawd Animation Studio</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Shantell+Sans:wght@800&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Shantell+Sans:wght@500;800&family=Noto+Sans+Math&display=block">
 <style>
   html, body { margin: 0; background: #1b1820; color: #eee; font: 13px system-ui, sans-serif; }
   main { padding: 12px; display: grid; gap: 10px; max-width: 1280px; margin: 0 auto; }
@@ -143,7 +143,7 @@
     const chosen = new URLSearchParams(location.search).get('look') || '';
     lookSelect.innerHTML = '';
     const own = document.createElement('option');
-    own.value = ''; own.textContent = `Look: scene (${scene.look || 'watercolor'})`;
+    own.value = ''; own.textContent = `Look: scene (${scene.look || 'motion'})`;
     lookSelect.appendChild(own);
     Object.keys(window.LOOKS || {}).forEach(name => {
       const opt = document.createElement('option');
@@ -157,7 +157,7 @@
     const url = new URL(location.href);
     if (lookSelect.value) url.searchParams.set('look', lookSelect.value); else url.searchParams.delete('look');
     history.replaceState(null, '', url);
-    setLook(lookSelect.value || (window.ACTIVE_SCENE && window.ACTIVE_SCENE.look) || 'watercolor');
+    setLook(lookSelect.value || (window.ACTIVE_SCENE && window.ACTIVE_SCENE.look) || 'motion');
     if (window.ready) window.renderAt(+scrub.value);
   });
 

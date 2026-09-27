@@ -1,4 +1,5 @@
-# Optional Python helpers: tools/analyze_audio.py and tools/audio_envelope.py (numpy), tools/make_bed.py and audio/generate_music.py (numpy, scipy), tools/sync_lyrics.py (faster-whisper)
+# Optional Python helpers: tools/analyze_audio.py and tools/audio_envelope.py (numpy), tools/make_bed.py and tools/synth.py (numpy, scipy), tools/sync_lyrics.py (faster-whisper), tools/narrate.py (edge-tts)
 numpy>=2.0
 scipy>=1.13
 faster-whisper>=1.1
+edge-tts>=7.2

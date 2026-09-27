@@ -123,6 +123,11 @@ function clawd(x, y, u, o = {}) {
     const px = V.strip ? (V.strip[0] < 0 ? (V.seam + V.R) / 2 - 1.2 : (V.L + V.seam) / 2 - .6) : -1.6 * wk;
     paint(ellPts(px * u, -6.4 * u, 3.4 * u * (V.strip ? .75 : wk), 1.5 * u, 18, J * 2, -.08), { fill: lt, fillOp: V.back ? 80 : 120, bleed: .2, tex: .85, border: .8, ink: null });
     paint(rectPts(L + .2 * u, -3.8 * u, R - L - .4 * u, 1.6 * u, J), { fill: dk, fillOp: 120, bleed: .03, tex: .7, border: .5, ink: null });
+    // cartoon finish: the side away from the light in shadow and a crisp highlight along the top edge
+    if (!V.back) {
+      paint(rectPts(R - 1.5 * u * wk, -8 * u + J, 1.5 * u * wk, 6 * u - 2 * J, J * .5), { wash: mixCol(col, '#2A1E3A', .3), washOp: 130, ink: null });
+      paint(rrPts(L + .5 * u, -7.65 * u, (R - L) * .45, .45 * u, .22 * u), { wash: mixCol(col, '#FFFFFF', .38), washOp: 170, ink: null });
+    }
     if (V.strip) {
       paint(rectPts(V.strip[0] * u, -8 * u, (V.strip[1] - V.strip[0]) * u, 6 * u, J * .5), { fill: dk, fillOp: 150, bleed: .04, tex: .6, border: .4, ink: null });
       inkLine([[V.seam * u + jit(J), -7.9 * u], [V.seam * u + jit(J), -5 * u], [V.seam * u + jit(J), -2.1 * u]], sw * .55, PAL.ink, 'inkfine', 0);

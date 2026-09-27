@@ -53,15 +53,19 @@ function mixCol(a, b, k) {
   return '#' + ((1 << 24) + (c(16) << 16) + (c(8) << 8) + c(0)).toString(16).slice(1);
 }
 // small deterministic camera shake, changes at 24 fps
-const shakeXY = (t, amt) => { const f = Math.floor(t * 24); return [(hash(f * 1.7) - .5) * 2 * amt, (hash(f * 2.3 + 9) - .5) * 2 * amt]; };
+const shakeXY = (t, amt) => { const f = step(t, 24); return [(hash(f * 1.7) - .5) * 2 * amt, (hash(f * 2.3 + 9) - .5) * 2 * amt]; };
 
 // ---------- motion principles, as pure functions of t ----------
 // Damped spring kicked at t0: 0 before, then a wobble that dies away. Use it for secondary motion and settles: a body
 // after landing, a hat that jiggles, a stack that sways, a tail that drags. k = damping, w = wobble speed (rad/s).
 const spring = (t, t0, k = 6, w = 18) => t < t0 ? 0 : Math.exp(-k * (t - t0)) * Math.sin(w * (t - t0));
 const ring = (t, evs, k = 6, w = 18) => evs.reduce((s, e) => s + spring(t, e, k, w), 0);    // one kick per event time
+// Index of the step t falls in, for anything that changes in jumps `rate` times a second (held drawings, shakes,
+// blinking lights). Under motion blur the subframes of one frame straddle step boundaries; counting from the frame's
+// own time (not the subframe's) keeps every subframe on the same step, otherwise the frame shows both at half opacity.
+const step = (t, rate) => { const sub = BOIL_T != null ? T - BOIL_T : 0; return Math.floor((t - sub) * rate + 1e-6); };
 // Hold each drawing for two frames (12 drawings a second), like hand-drawn animation "on twos". Wrap a shot's t in it.
-const onTwos = t => Math.floor(t * 12 + 1e-6) / 12;
+const onTwos = t => step(t, 12) / 12;
 // Point on a thrown or jumping arc from p0 to p1, peaking h px above the straight line; k = 0..1 along the flight.
 const arcPt = (p0, p1, h, k) => [lerp(p0[0], p1[0], k), lerp(p0[1], p1[1], k) - h * 4 * k * (1 - k)];
 // A hop that takes off at t0 and lands at t1, h body units high: crouch (anticipation), stretch on takeoff,
@@ -174,7 +178,7 @@ function ribbon(P, w0, w1 = w0) {
 
 // ---------- looks ----------
 // A look decides how paint(), inkLine(), the paper and the grain render; scenes, characters and props never change.
-// A scene picks one with `look` in registerScene and ?look= (render.mjs --look=) overrides it. Add a look here when a
+// A scene picks one with `look` in registerScene (motion when it sets none) and ?look= (render.mjs --look=) overrides it. Add a look here when a
 // video needs a style none of these give.
 //   watercolor: p5.brush pigment, bleeding fills, boiling ink, paper texture and grain (slow: ~1-5 s a frame)
 //   flat:       clean vector cartoon, solid fills and even outlines, plain background (fast: also the draft preview)
@@ -184,7 +188,7 @@ const LOOKS = window.LOOKS = {
   flat: { brush: false, paper: false, grain: false, bg: PAL.paper, line: { ink: 4.2, inkfine: 2.2, dry: 7 }, lineOp: { dry: 110 } },
   motion: { brush: false, paper: false, grain: false, boil: false, bg: '#0E1024', line: { ink: 3, inkfine: 1.6, dry: 4 }, lineOp: { dry: 140 } },
 };
-let LOOK = LOOKS.watercolor;
+let LOOK = LOOKS.motion;
 function setLook(name) {
   if (!LOOKS[name]) throw new Error(`setLook: unknown look "${name}" (one of: ${Object.keys(LOOKS).join(', ')})`);
   LOOK = { name, ...LOOKS[name] };
@@ -237,6 +241,30 @@ function inkLine(pts, sw = 1, col = PAL.ink, br = 'ink', curv = .5) {
     return flatShape(pts, false, curv);
   }
   brush.noFill(); brush.noWash(); brush.noHatch(); brush.set(br, col, sw); brush.spline(pts, curv);
+}
+
+// Runs fn with painting disabled and returns what it returns: to learn where something will be (a pencil point on a
+// notepad drawn later in the frame) without drawing it twice or remembering it from an earlier frame.
+function dryRun(fn) {
+  const saved = [window.paint, window.inkLine, window.letter];
+  window.paint = window.inkLine = window.letter = () => {};
+  try { return fn(); } finally { [window.paint, window.inkLine, window.letter] = saved; }
+}
+
+// Cel shading, the cartoon way: the shape in its shadow colour, then the lit colour on a copy shrunk toward the light
+// (top-left), which leaves a crescent of shadow on the far side; an optional highlight; then the outline. It needs no
+// mask, so it works inside split-screen panels, but the shape must be roughly convex around the light point.
+// o: { col, shade (default: col darkened), hi (a highlight, 0..1), k (how much light covers, .8), light: [fx, fy]
+//      (where the light point sits in the shape's box, 0..1), ink, sw, curv }
+function celFill(pts, o = {}) {
+  const col = o.col || PAL.clay, shade = o.shade || mixCol(col, '#2A1E3A', .32), k = o.k ?? .8, [fx, fy] = o.light || [.25, .2];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  const ax = lerp(x0, x1, fx), ay = lerp(y0, y1, fy), lit = pts.map(([x, y]) => [ax + (x - ax) * k, ay + (y - ay) * k]);
+  paint(pts, { wash: shade, ink: null, curv: o.curv });
+  paint(lit, { wash: col, ink: null, curv: o.curv });
+  if (o.hi) paint(ellPts(lerp(x0, x1, fx + .1), lerp(y0, y1, fy + .08), (x1 - x0) * .14 * o.hi, (y1 - y0) * .08 * o.hi, 14, 0, -.5), { wash: mixCol(col, '#FFFFFF', .45), ink: null });
+  if (o.ink !== null) paint(pts, { ink: o.ink || PAL.ink, sw: o.sw ?? 1, curv: o.curv });
 }
 
 // ---------- lettering (drawn on the 2D compositor, under the paper grain) ----------
@@ -316,6 +344,7 @@ async function setup() {
   paperG = makePaper(); grainC = makeGrain(); glowTex = makeGlowTex(); letG = createGraphics(W, H); letG.pixelDensity(1);
   outC = document.getElementById('out'); outX = outC.getContext('2d');
   await document.fonts.load('100px "Permanent Marker"');
+  await Promise.all(['500 100px "Shantell Sans"', '800 100px "Shantell Sans"', '100px "Noto Sans Math"'].map(f => document.fonts.load(f, 'x∧⇒∑')));
   window.ready = true;
   if (!location.search.includes('render')) devUI();
 }
