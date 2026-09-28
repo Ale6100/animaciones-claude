@@ -89,8 +89,8 @@ if (args.encode) {
   process.exit(0);
 }
 
-// On laptops with two GPUs Chrome picks the integrated one by default; ask for the dedicated one (no effect with a single GPU)
-const gpu = [...(process.platform === 'win32' ? ['--use-angle=d3d11'] : process.platform === 'darwin' ? ['--use-angle=metal'] : ['--use-gl=angle']), '--force_high_performance_gpu'];
+// On laptops with two GPUs Chrome picks the integrated one by default; ask for the dedicated one
+const gpu = [...(process.platform === 'win32' ? ['--use-angle=d3d11'] : process.platform === 'darwin' ? ['--use-angle=metal'] : ['--use-gl=angle']), ...(args.force_gpu ? ['--force_high_performance_gpu'] : [])];
 // Each worker gets its own browser: pages in one browser share a single GPU process that runs their WebGL one at a
 // time, so they queue behind each other; separate browsers feed the GPU in parallel (about 4x faster with 4 workers).
 const browsers = [];
