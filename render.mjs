@@ -21,8 +21,11 @@
 //   iterating on motion and timing) · --blur=4 [--shutter=.5] motion blur from 4 subframes per frame (4x the time) ·
 //   --post=bloom|film|punch colour/glow pass on --clip and --encode. Frames for a look, draft or blur go to their own
 //   folder, so pass the same flags to --encode.
-//   Music: --audio=assets/song.mp3 (or PROJECT.audio) is muxed into --clip and --encode. Other flags: --fps=24,
-//   --chrome=<path to Chrome/Chromium>.
+//   Music: --audio=assets/song.mp3 (or PROJECT.audio) is muxed into --clip and --encode. Sound effects: when the scene
+//   has transitions, impacts, glitches or an sfx list (src/post.js), tools/sfx.py mixes them over the music first
+//   (out/sfx/<scene>.wav, which the studio plays too); --sfx=off leaves them out, --sfx-gain=0.7 scales them, and
+//   node render.mjs --sfx --scene=x [--script=...] only builds the mix, to hear it in the studio.
+//   Other flags: --fps (default: the scene's fps, else 24), --chrome=<path to Chrome/Chromium>.
 import puppeteer from 'puppeteer-core';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, statSync, renameSync, readdirSync, unlinkSync } from 'node:fs';
@@ -37,7 +40,8 @@ const CHROMES = [args.chrome, process.env.CHROME_PATH, 'C:/Program Files/Google/
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'];
 const CHROME = CHROMES.find(p => p && existsSync(p));
 if (!CHROME) { console.error('Chrome not found: pass --chrome=<path> or set CHROME_PATH'); process.exit(1); }
-const fps = +(args.fps || 24), look = args.draft ? 'flat' : args.look, blur = args.draft ? 1 : +(args.blur || 1), shutter = +(args.shutter || .5);
+let fps = +(args.fps || 0);
+const look = args.draft ? 'flat' : args.look, blur = args.draft ? 1 : +(args.blur || 1), shutter = +(args.shutter || .5);
 const FRAMES_DIR = `out/frames/${args.scene || 'default'}${args.draft ? '.draft' : look ? '.' + look : ''}${blur > 1 ? '.blur' + blur : ''}`;
 // Finishing passes applied while encoding (FFmpeg filters, in planar RGB so the screen blend treats colour correctly).
 const GLOW = (lift, sigma, op) => `format=gbrp,split[a][b];[b]curves=all='0/0 ${lift}/0 1/1',gblur=sigma=${sigma}[g];[a][g]blend=all_mode=screen:all_opacity=${op}`;
@@ -52,42 +56,15 @@ const postArgs = args.post ? ['-vf', POST[args.post]] : [];
 // scenes and the --script files) plus the flags that change pixels. Frames made from anything else are stale.
 function fingerprint() {
   const html = readFileSync('studio.html', 'utf8'), h = createHash('sha256').update(html);
-  const scripts = [...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m => m[1]).concat(String(args.script || args.project || '').split(',').filter(Boolean));
+  const scripts = [...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m => m[1]).concat(String(SCRIPTS).split(',').filter(Boolean));
   for (const f of scripts) h.update(f + '\0').update(existsSync(f) ? readFileSync(f) : 'missing');
   h.update(JSON.stringify({ scene: args.scene || null, look: look || null, blur, shutter, fps }));
   return h.digest('hex').slice(0, 16);
 }
+const PY = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 const run = (cmd, a) => new Promise((ok, bad) => { const p = spawn(cmd, a, { stdio: 'inherit' }); p.on('close', c => c ? bad(new Error(cmd + ' exited ' + c)) : ok()); });
 const times = s => String(s).split(',').map(Number);
 const span = s => String(s).split(':').map(Number);
-
-if (args.encode) {
-  if (!existsSync(FRAMES_DIR)) { console.error(`no frames in ${FRAMES_DIR}: render them first, and pass --encode the same --scene/--look/--draft/--blur`); process.exit(1); }
-  const out = args.out || 'out/video.mp4', nums = readdirSync(FRAMES_DIR).filter(f => /^f\d{5}\.jpg$/.test(f)).map(f => +f.slice(1, 6)).sort((a, b) => a - b);
-  // FFmpeg reads an image sequence only up to its first gap, so a missing frame would silently cut the video short
-  const missing = []; for (let i = 0, k = 0; i <= (nums[nums.length - 1] ?? -1); i++) { if (nums[k] === i) k++; else missing.push(i); }
-  if (!nums.length || missing.length) { console.error(`${FRAMES_DIR}: ${nums.length ? `${missing.length} frames missing (${missing.slice(0, 10).join(', ')}${missing.length > 10 ? ', …' : ''})` : 'no frames'}; re-run the same --frames command to render them`); process.exit(1); }
-  const n = nums.length;
-  let audio = args.audio;
-  const sceneMeta = `${FRAMES_DIR}/scene.json`;
-  if (!audio && existsSync(sceneMeta)) {
-    const { audio: a } = JSON.parse(readFileSync(sceneMeta, 'utf8'));
-    if (a && existsSync(a)) audio = a;
-  }
-  if (!audio) {
-    try {
-      const cfg = readFileSync('src/config.js', 'utf8');
-      const m = cfg.match(/audio:\s*['"]([^'"]+)['"]/);
-      if (m && m[1] && existsSync(m[1])) audio = m[1];
-    } catch {}
-  }
-  console.log(`encoding ${n} frames → ${out}${audio ? ' with ' + audio : ''}`);
-  await run('ffmpeg', ['-y', '-loglevel', 'error', '-stats', '-framerate', String(fps), '-i', `${FRAMES_DIR}/f%05d.jpg`,
-    ...(audio ? ['-i', audio, '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-shortest'] : []),
-    ...postArgs, '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out]);
-  console.log('wrote ' + out);
-  process.exit(0);
-}
 
 // On laptops with two GPUs Chrome picks the integrated one by default; ask for the dedicated one
 const gpu = [...(process.platform === 'win32' ? ['--use-angle=d3d11'] : process.platform === 'darwin' ? ['--use-angle=metal'] : ['--use-gl=angle']), ...(args.force_gpu ? ['--force_high_performance_gpu'] : [])];
@@ -103,6 +80,9 @@ async function launchBrowser() {
   return b;
 }
 const closeAll = () => Promise.all(browsers.map(b => b.close().catch(() => {})));
+// What --frames recorded about its frames (audio, fingerprint, scripts, fps); --encode reopens the page with the same scripts
+const META = existsSync(`${FRAMES_DIR}/scene.json`) ? JSON.parse(readFileSync(`${FRAMES_DIR}/scene.json`, 'utf8')) : {};
+const SCRIPTS = args.script || args.project || (args.encode && META.script) || '';
 const browser = await launchBrowser();
 // p5.brush logs these WebGL warnings once per page in some scenes; they are harmless (see ANIMATION_GUIDE.md)
 const HARMLESS = /WebGL: INVALID_OPERATION: .* location is not from the associated program/;
@@ -116,9 +96,10 @@ async function openPage(tag = '', br = browser) {
   });
   page.on('pageerror', e => { pageErrors++; console.log(`[page error${tag}]`, e.message); });
   const sceneParam = args.scene ? `&scene=${encodeURIComponent(args.scene)}` : '';
-  const scriptParam = args.script ? `&script=${encodeURIComponent(args.script)}` : (args.project ? `&script=${encodeURIComponent(args.project)}` : '');
+  const scriptParam = SCRIPTS ? `&script=${encodeURIComponent(SCRIPTS)}` : '';
   await page.goto(pathToFileURL(resolve('studio.html')).href + '?render' + sceneParam + scriptParam + (look ? `&look=${encodeURIComponent(look)}` : ''), { waitUntil: 'networkidle0', timeout: 120000 });
   await page.waitForFunction('window.ready === true', { timeout: 60000 });
+  if (!fps) fps = await page.evaluate(() => (window.ACTIVE_SCENE && ACTIVE_SCENE.fps) || 24);
   if (args.loop) {
     const ok = await page.evaluate(name => { if (!LOOPS[name]) return false; window.LOOP = LOOPS[name]; return true; }, args.loop);
     if (!ok) { console.error(`no loop named "${args.loop}"`); process.exit(1); }
@@ -131,8 +112,49 @@ const frameOf = async (page, t, type, q) => {
 };
 // the length of whatever is being rendered: a loop's .len, or the active scene's duration
 const lengthOf = page => page.evaluate(() => window.LOOP ? window.LOOP.len : (window.ACTIVE_SCENE ? window.ACTIVE_SCENE.duration : (typeof DUR !== 'undefined' ? DUR : 11)));
+// The music with the scene's sound effects mixed in by tools/sfx.py (out/sfx/<scene>.wav, which the studio plays
+// too). Falls back to the plain track when there is nothing to add, --sfx=off is given, or Python can't run.
+async function soundtrack(page, audio) {
+  if (args.sfx === 'off' || args.loop) return audio;
+  const { events, dur, id } = await page.evaluate(() => ({ events: window.sfxEvents(), dur: DUR, id: window.ACTIVE_SCENE && ACTIVE_SCENE.id }));
+  if (!events.length || !id) return audio;
+  mkdirSync('out/sfx', { recursive: true });
+  const json = `out/sfx/${id}.events.json`, wav = `out/sfx/${id}.wav`;
+  writeFileSync(json, JSON.stringify(events));
+  try {
+    await run(PY, ['tools/sfx.py', `--events=${json}`, `--dur=${dur}`, `--out=${wav}`, ...(audio ? [`--audio=${audio}`] : []), ...(args['sfx-gain'] ? [`--gain=${args['sfx-gain']}`] : [])]);
+    return wav;
+  } catch (err) { console.log('sound effects skipped:', err.message); return audio; }
+  finally { unlinkSync(json); }
+}
 
-if (args.sheet || args.strip) {
+if (args.encode) {
+  fps = fps || META.fps || 24;
+  if (!existsSync(FRAMES_DIR)) { console.error(`no frames in ${FRAMES_DIR}: render them first, and pass --encode the same --scene/--look/--draft/--blur`); process.exit(1); }
+  const out = args.out || 'out/video.mp4', nums = readdirSync(FRAMES_DIR).filter(f => /^f\d{5}\.jpg$/.test(f)).map(f => +f.slice(1, 6)).sort((a, b) => a - b);
+  // FFmpeg reads an image sequence only up to its first gap, so a missing frame would silently cut the video short
+  const missing = []; for (let i = 0, k = 0; i <= (nums[nums.length - 1] ?? -1); i++) { if (nums[k] === i) k++; else missing.push(i); }
+  if (!nums.length || missing.length) { console.error(`${FRAMES_DIR}: ${nums.length ? `${missing.length} frames missing (${missing.slice(0, 10).join(', ')}${missing.length > 10 ? ', …' : ''})` : 'no frames'}; re-run the same --frames command to render them`); process.exit(1); }
+  const n = nums.length;
+  let audio = args.audio;
+  if (!audio && META.audio && existsSync(META.audio)) audio = META.audio;
+  if (!audio) {
+    try {
+      const cfg = readFileSync('src/config.js', 'utf8');
+      const m = cfg.match(/audio:\s*['"]([^'"]+)['"]/);
+      if (m && m[1] && existsSync(m[1])) audio = m[1];
+    } catch {}
+  }
+  // the same scene the frames came from, for its sound effects
+  const page = await openPage(), id = await page.evaluate(() => window.ACTIVE_SCENE && ACTIVE_SCENE.id);
+  if (args.scene && id !== args.scene) console.log(`sound effects skipped: scene "${args.scene}" isn't loaded (pass its --script)`);
+  else audio = await soundtrack(page, audio);
+  console.log(`encoding ${n} frames → ${out}${audio ? ' with ' + audio : ''}`);
+  await run('ffmpeg', ['-y', '-loglevel', 'error', '-stats', '-framerate', String(fps), '-i', `${FRAMES_DIR}/f%05d.jpg`,
+    ...(audio ? ['-i', audio, '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-shortest'] : []),
+    ...postArgs, '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out]);
+  console.log('wrote ' + out);
+} else if (args.sheet || args.strip) {
   const page = await openPage(), out = args.out || 'out/sheet.jpg'; mkdirSync(dirname(out), { recursive: true });
   let ts;
   if (args.strip) { const [a, b] = span(args.strip); ts = []; for (let i = Math.round(a * fps); i <= Math.round(b * fps); i++) ts.push(i / fps); }
@@ -169,20 +191,20 @@ if (args.sheet || args.strip) {
   const [a, b] = args.range ? span(args.range) : [0, len], workers = +(args.workers || 4);
   mkdirSync(FRAMES_DIR, { recursive: true });
   // Resuming reuses every frame already on disk, so frames from an older version of the scene must never be mixed in.
-  const metaFile = `${FRAMES_DIR}/scene.json`, fp = fingerprint(), meta = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf8')) : {};
+  const metaFile = `${FRAMES_DIR}/scene.json`, fp = fingerprint();
   const onDisk = () => readdirSync(FRAMES_DIR).filter(f => /^f\d{5}\.jpg$/.test(f));
   if (args.fresh) for (const f of onDisk()) unlinkSync(`${FRAMES_DIR}/${f}`);
   else if (args.redo) {
     const [r0, r1] = span(args.redo);
     for (const f of onDisk()) { const i = +f.slice(1, 6); if (i >= Math.round(r0 * fps) && i < Math.round(r1 * fps)) unlinkSync(`${FRAMES_DIR}/${f}`); }
-  } else if (onDisk().length && meta.fingerprint !== fp) {
+  } else if (onDisk().length && META.fingerprint !== fp) {
     console.error(`${FRAMES_DIR} holds frames rendered from a different version of the scene, engine or flags, and resuming would mix them in.\n` +
       `  --fresh        delete them all and render again (the safe choice)\n` +
       `  --redo=a:b     re-render only seconds a to b and keep the rest (only when the change is limited to those seconds)`);
     await closeAll();
     process.exit(1);
   }
-  writeFileSync(metaFile, JSON.stringify({ audio: sceneAudio, fingerprint: fp }));
+  writeFileSync(metaFile, JSON.stringify({ audio: sceneAudio, fingerprint: fp, script: SCRIPTS, fps }));
   const first = Math.round(a * fps), last = Math.min(Math.ceil(len * fps) - 1, Math.round(b * fps) - 1);
   const todo = []; for (let i = first; i <= last; i++) { const f = `${FRAMES_DIR}/f${String(i).padStart(5, '0')}.jpg`; if (!existsSync(f) || statSync(f).size < 1000) todo.push(i); }
   console.log(`${todo.length} frames to render (${last - first + 1 - todo.length} already done), ${workers} workers`);
@@ -256,7 +278,7 @@ if (args.sheet || args.strip) {
 } else if (args.clip) {
   const page = await openPage(), len = await lengthOf(page);
   const [a, b] = args.range ? span(args.range) : typeof args.clip === 'string' ? span(args.clip) : [0, len];
-  const audio = args.audio || await page.evaluate(() => (window.ACTIVE_SCENE && window.ACTIVE_SCENE.audio) || (typeof PROJECT !== 'undefined' && PROJECT.audio) || '');
+  const audio = await soundtrack(page, args.audio || await page.evaluate(() => (window.ACTIVE_SCENE && window.ACTIVE_SCENE.audio) || (typeof PROJECT !== 'undefined' && PROJECT.audio) || ''));
   const out = args.out || 'out/clip.mp4'; mkdirSync(dirname(out), { recursive: true });
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
     ...(audio ? ['-ss', String(a), '-t', String(b - a), '-i', audio, '-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '192k', '-shortest'] : []),
@@ -318,6 +340,10 @@ if (args.sheet || args.strip) {
   }
   await closeAll();
   process.exit(pageErrors ? 1 : 0);
+} else if (args.sfx) {
+  const page = await openPage(), track = await page.evaluate(() => (window.ACTIVE_SCENE && ACTIVE_SCENE.audio) || '');
+  const out = await soundtrack(page, args.audio || (track && existsSync(track) ? track : ''));
+  console.log(out ? `wrote ${out}` : 'no sound effects in this scene');
 } else {
   console.log('nothing to do: see the usage notes at the top of render.mjs');
 }

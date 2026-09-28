@@ -6,6 +6,8 @@ The person prompting you decides **what** the video is about. This guide decides
 
 **Always packed with details.** Every video, whatever its look or mood, is crowded with details: lots of them, in every layer, all the time. Some come from what is being said or sung (a notepad that rewrites itself with every order, a counter that climbs, props that appear on their word), others make the place live on its own (a cat asleep on the sofa, a fly, a neighbour at work). Both kinds, always, many more than feels necessary (rule 8).
 
+**The default: motion graphics with a reel's finish, mixed with whatever else helps.** Every video starts from motion graphics (the `motion` look and kit) with the finish of `src/post.js`: declared transitions at the seams, impacts on the hits, a sound for every visual event, expo timing and strong display type (see Compositor and Motion graphics). Styles are meant to help each other: characters with cel shading inside a motion-graphics world, an infographic insert of what is being said inside a cartoon, a painted memory inside a flat scene, a 3D element behind 2D characters. Mixing is the norm and one pure style is the exception, used only when the video clearly gains from it. The AI making the video decides the mix per video and per section, without asking, and says what it chose and why.
+
 **Nothing is a hard limit, and no label is a cage.** Looks, styles, moods, techniques, 2D and 3D, the presets and the helpers of this kit are all ingredients: mix them, bend them or replace them whenever the video gains from it, within a shot or across the video. A request for a style ("watercolor", "calm", "K-pop") tells you what the person is after; if the song and the context call for something else or a blend, go for it, and tell them what you chose and why. The one thing that never bends is the viewer: whatever you mix has to read, feel intended and serve the song.
 
 **No design here is final.** Clawd, the emotions, the props and the helpers are a starting point, not a limit. Change any of them, Clawd's own design included, and add whatever new characters, props or emotions the idea needs. Paint new things with the same tools and rules, so they belong with the rest.
@@ -50,7 +52,7 @@ Underneath all three, the viewer has to be able to follow it. Timing (rule 4) is
 
 ### 1. The medium is solid: one look, boil, depth that serves the video
 
-- **Pick the look first. The default for every kind of video (comedy, music videos, explainers) is motion graphics packed with details, literal and ambient** (see rule 8): it is what the team likes most. It stays a starting point, not a cage: when the context of a video calls for another look, a mix or a look invented for it (paper cut-out, screen print, crayon, stop-motion clay, comic halftone...), use that and say why. A scene that sets no `look` renders in motion graphics too; set it explicitly anyway, and never pick one by habit. 3D inside a 2D video is welcome whenever it helps (a 3D camera move, a 3D object or world behind 2D characters, see rule 1 and `CAM3` in the Library). What lost clearly was replacing the whole video with a separate 3D pipeline (Blender, ready-made models, motion capture): every detail needed a model, so the frames came out bare, and captured motion looked stiff and slow next to cartoon timing. `look` in `registerScene` switches how every `paint()`, `inkLine()`, paper and grain render (see Looks in the Engine section), and a video can add its own look. Choose what serves the song. One coherent look is the simple default; mixing is just as valid when it helps: a section in another look, one element drawn in a different one (`withLook()`), 2D characters over a 3D world, a look invented for this video.
+- **Pick the look first. The default for every kind of video (comedy, music videos, explainers) is motion graphics packed with details, literal and ambient** (see rule 8): it is what the team likes most. It stays a starting point, not a cage: when the context of a video calls for another look, a mix or a look invented for it (paper cut-out, screen print, crayon, stop-motion clay, comic halftone...), use that and say why. A scene that sets no `look` renders in motion graphics too; set it explicitly anyway, and never pick one by habit. 3D inside a 2D video is welcome whenever it helps (a 3D camera move, a 3D object or world behind 2D characters, see rule 1 and `CAM3` in the Library). What lost clearly was replacing the whole video with a separate 3D pipeline (Blender, ready-made models, motion capture): every detail needed a model, so the frames came out bare, and captured motion looked stiff and slow next to cartoon timing. `look` in `registerScene` switches how every `paint()`, `inkLine()`, paper and grain render (see Looks in the Engine section), and a video can add its own look. Choose what serves the song. Mix by default (see the top of this guide): a section in another look, one element drawn in a different one (`withLook()`), motion-graphics inserts between character shots, 2D characters over a 3D world, a look invented for this video. A single pure look is the exception, when the video clearly gains from it.
 - **Draw everything through `paint()` and `inkLine()`,** so the look applies to all of it. Characters get flat `wash` colour plus an ink outline. Backgrounds get soft `fill` shapes, usually with no outline or a thin one. Never call p5 shapes (`rect`, `ellipse`, `fill()`) directly: they skip the look, and in watercolor they read as 2000s Flash.
 - **Finish every drawing.** A prop or a set is not done at one outlined shape: give it secondary shapes (panels, seams, buttons, marks), light and shade (a highlight and a darker side), wear or texture, and a little secondary motion. Characters above all: shade each body part with `celFill()` (cel shading, works in every look and inside split screens), draw the silhouette heavier than the inner detail, and give them secondary construction (iris and glint, strands of hair, folds and stitches, fingers). The shopkeeper in `src/characters.js` is the reference. The focal pieces get the most finish, the background less, but never none.
 - **The linework boils.** `jit()` and `random()` are reseeded 12 times a second (`BOIL`), so every drawing wobbles slightly, like hand-drawn animation. That's the look; don't fight it. For anything that must stay put from frame to frame (star positions, tuft heights), use `hash(i)`. Give each separate element its own seed with `boilSeed(key)` (see Engine), or one moving thing makes everything drawn after it jitter.
@@ -120,6 +122,7 @@ For a worked example, see how the demo times its ending, at the end of this guid
   - a camera move that carries through into the next shot
   - a fade or push from paper or black
 - A plain cut is fine only when it's on action or a deliberate smash cut.
+- **Declared transitions** (see Compositor): a shot's third entry, `[t0, fn, { tr: 'slices', lead: [PAL.clay] }]`, makes the compositor sweep the lead colours across and reveal the new shot inside the last one (`circle`, `diamond`, `slices`, `blinds`, `wipe`, `split`, `tiles`, `shape`, `push`). They work on the finished frames, lyrics included, and bring their own whoosh. Hand-made ones (`brushWipe`, `iris`, `whip`) stay just as valid.
 - **Changes inside a shot are transitions too:** emotions go through `emotions()` and turns go through `turn()`. Props arrive and leave on arcs, never popping in.
 
 ### 7. One piece: a vision before any code
@@ -283,6 +286,10 @@ node render.mjs --encode --scene=my_video --out=out/video.mp4   # … then encod
 
 Resuming never mixes versions: if the scene, the engine or a pixel flag changed since the frames on disk were rendered, `--frames` stops and asks for `--fresh` (delete them all and render again) or `--redo=a:b` (re-render only seconds a to b and keep the rest). Use `--redo` only when the change is limited to those seconds; when in doubt, `--fresh`.
 
+Frame rate: `--fps`, or the scene's `fps` (24 by default). Fast motion graphics look choppy at 24; 50 or 60 costs 2–2.5× the frames and reads smooth.
+
+Sound: when the scene has transitions, impacts, glitches or an `sfx` list, `--clip` and `--encode` mix their sound effects over the music first (`tools/sfx.py`, into `out/sfx/<scene>.wav`); `--sfx=off` leaves them out and `--sfx-gain=0.7` scales them. `node render.mjs --sfx --scene=x [--script=...]` builds only the mix, and the studio plays it instead of the plain track (run it again after changing the sounds).
+
 Finish: `--blur=4` renders 4 subframes per frame and averages them (motion blur, like a camera's shutter; 4× the render time), and `--post=bloom|film|punch` adds a glow and colour pass while encoding. Frames rendered with a look, `--draft` or `--blur` get their own folder, so pass the same flags to `--encode`.
 
 ---
@@ -374,20 +381,22 @@ Also reusable: `whip()` and `brushWipe()` (transitions, `src/timeline.js`); `phy
 | `src/config.js` | `PROJECT = { duration, bpm, offset, audio? }` |
 | `src/core.js` | canvas, palette, timing and motion helpers, looks (`LOOKS`), `paint()`, camera, full-frame effects, `glow()`, lettering, paper, render hooks and motion blur |
 | `src/clawd.js` | Clawd: views, emotions, eyes, mouths, hats, emotes, moves |
-| `src/timeline.js` | `shots()`, `LOOPS`, `brushWipe()` |
+| `src/timeline.js` | `shots()`, `LOOPS`, `brushWipe()`, `whip()`, `registerAudioMap()` / `audioMap()` |
+| `src/post.js` | the compositor: declared transitions, impacts, flashes, glitches, grain, vignette, fades, the overlay (`chromeHUD()`) and the sound events (see Compositor) |
 | `src/kinetic.js` | camera directors (`camPath`, `camDolly`, `camOrbit`, `zoomThrough`) and physical lyrics (`physicalLyrics`, `hopAcross`, `wordLetters`, `kineticWord`, `wordPlatform`, `wordDodge`) |
 | `src/characters.js` | the cast beyond Clawd (see Characters) |
 | `src/fx.js` | the Library: promoted backgrounds, effects and props |
-| `src/motion.js` | the motion-graphics kit: easing, cascades, lines that draw on, shape morphs, masks, kinetic type (see Motion graphics) |
+| `src/motion.js` | the motion-graphics kit: easing, cascades, lines that draw on, shape morphs, masks, display type, particles, 3D point clouds, echoes, grids (see Motion graphics) |
 | `src/comedy.js` | literal comedy and details that answer the song: `wordAt()` (when a word is said), `cues()` (set dressing that pops in on a word), `popIn()`, `snapAt()`, `growAt()`, `freezeAt()` |
 | `src/scenes/literal.js` | an 8-second sketch of literal comedy (a person, a ball that turns green and grows absurdly). One idea, not a template |
 | `src/scenes/motiongfx.js` | a 10-second sketch of mixing: a painted Clawd inside a motion-graphics world (morph, draw-on lines, a masked reveal, cascading type). One idea, not a template |
 | `src/styles.js` | mood presets (`MOODS`), `moodAt()` for moods per section, `beatCam()` for beat-locked camera energy |
+| `src/scenes/reel.js` | a 24-second motion-graphics reel that runs through the compositor and the motion kit, sound effects included. One idea, not a template |
 | `src/scenes/showcase.js` | a 24-second sketch of the paradigm (calm → energetic → calm in one continuous shot, physical lyrics). One idea, not a template |
 | `src/sheets.js` | the model sheets as loops (`?loop=emotions`, `?loop=views`) |
 | `src/scenes/demo.js` | an 11-second example. **Don't copy it** (see the end of this guide) |
 | `studio.html` | open it in Chrome to scrub the video and switch looks from the toolbar (`?t=2.5` jumps to a time, `?loop=emotions` shows a loop) |
-| `render.mjs` | headless renderer: sheets, strips, crops, stills, PNG loops, MP4 |
+| `render.mjs` | headless renderer: sheets, strips, crops, stills, PNG loops, MP4, and the sound-effects mix (`--sfx`) |
 
 ### Frames are pure functions of time
 
@@ -421,7 +430,9 @@ To add a look, add an entry to `LOOKS` in `src/core.js` and, if it needs a new w
 
 ### Motion graphics
 
-`src/motion.js` is a kit for animated graphic design (shapes, lines, type, icons) that mixes with everything else: in the `motion` look for a pure motion-graphics piece, or inside any look, around or under hand-drawn characters (a painted Clawd in a vector world, with `withLook('watercolor', ...)`, is the example in `src/scenes/motiongfx.js`). The style lives in the timing: nothing moves at a constant speed, elements enter in cascades, and shapes turn into each other instead of cutting.
+`src/motion.js` is a kit for animated graphic design (shapes, lines, type, icons) that mixes with everything else: in the `motion` look for a pure motion-graphics piece, or inside any look, around or under hand-drawn characters (a painted Clawd in a vector world, with `withLook('watercolor', ...)`, is the example in `src/scenes/motiongfx.js`). The style lives in the timing: nothing moves at a constant speed, elements enter in cascades, and shapes turn into each other instead of cutting. Graphic elements move on the expo curves (`expoOut` to arrive, `expoIn` to leave, `expoInOut` to travel): a violent start and a long settle is the signature of the style. Characters keep the animation curves (`ease`, `backOut`, springs). Layout is part of it too: one strong display face, a grid with fixed margins, one accent colour used sparingly, and one focal element per moment.
+
+**Inserts inside a character piece stay in its world.** A motion-graphics insert cut into a sketch works when it shows the scene's own things in the scene's logic: the order being dictated turning into a board where each item snaps into its column as it is named read as part of the story. Pure reel graphics (rows of words scrolling at an angle, a spinning particle storm) felt out of place in the same sketch, even built from its words: they belong to an abstract piece, not to a scene with characters and a place. Build inserts from the props, palette and dialogue of the scene, and keep the abstract kit (marquees, `particleWord`, `cloud3D`) for videos or sections that are abstract already.
 
 | piece | what it does |
 |---|---|
@@ -433,6 +444,37 @@ To add a look, add an entry to `LOOKS` in `src/core.js` and, if it needs a new w
 | `arcRing`, `burstLines`, `dotGrid`, `pillBar` | progress rings, radial hit lines, dot-grid textures, growing bars |
 | `act(t, keys, table, o)`, `beatKeys(t0, t1, names, every, seed)` | acting from key poses like limited animation: each pose reached with overshoot, held, and left with a small anticipation; `beatKeys` makes a background actor change pose every `every` seconds. Tables: `CLAWD_POSES` (`src/clawd.js`) and `SCI_POSES` (`src/characters.js`) |
 | `motionText(txt, x, y, t, t0, o)` | title-sequence type, letter by letter: `rise`, `slide`, `scale` or `type` (typewriter) |
+| `titleText(txt, x, y, t, t0, o)` | a display title: letters rise from behind the baseline (masked), tracking tightens as they land, an accent letter, an underline that wipes in, a staggered exit (`out`) |
+| `label(txt, x, y, t, o)`, `counter(x, y, t, t0, t1, o)` | small spaced caps that reveal left to right, optionally decoding through random glyphs; a number counting up (loaders, stats) |
+| `marquee(txt, y, t, o)` | a row of huge type scrolling forever, filled or hollow (`outline`), tilted with `angle`; stack rows for a kinetic poster |
+| `typeFace(role)` | the font for `display`, `condensed` or `label`: the scene's `type`, else the look's, else Bahnschrift (ships with Windows 10 and 11) |
+| `echo(t, n, dt, fn)` | a drawing repeated `n` times, each copy `dt` s behind and fainter: trails for morphs, spins and titles |
+| `withAlpha(col, a)` | a colour with opacity, for echoes and far layers |
+| `cells(cols, rows, x, y, w, h, from)`, `flip(t, t0, dur)` | a grid whose cells carry their place in a sweep (`diag`, `center`, `left`, `top`, `random`); a card flip (scale and which face shows) |
+| `beatRings(cx, cy, t, o)` | rings bursting out on every beat |
+| `dots(P, o)`, `streaks(S, o)` | thousands of points or short lines in one native call (crisp in every look; `add` for light) |
+| `textPoints(txt, o)`, `particleWord(P, t, cx, cy, o)` | a word as points; particles that gather into it on curved paths, shimmer, and explode into a swirling galaxy at `burst`, with motion-blur streaks |
+| `shape3(name, n)`, `cloud3D(t, cx, cy, o)` | 3D point clouds (sphere, torus, knot, helix, cube, wave) that rotate in perspective and morph from shape to shape on key times, nearer points brighter; `lines` threads them, `wave` makes a surface |
+| `spotBg(inner, outer, o)`, `haze(k, col)` | a background lit from a point; a veil over what's drawn so far, so the background recedes and the focal element reads |
+
+Letters (`letter()`, all the type above, lyrics) sit on their own layer over the whole frame. To draw something over them (a `haze()` behind a title, a mask), call `flushLetters()` first: it paints the letters queued so far into the frame.
+
+### Compositor: transitions, impacts and finish
+
+`src/post.js` works on the finished 2D frame after each shot is drawn, so it applies to every look and covers letters and lyrics too. Everything is declared in `registerScene` and is off unless the scene asks for it:
+
+| field | what it does |
+|---|---|
+| `shots: [[t0, fn, { tr, lead, dur, lag, at, angle, n, pts, ease, sfx, name }]]` | a transition INTO that shot (`dur` .55 s): the lead colours (one or more; `null` for a direct reveal) sweep across one after another and the new shot appears inside the last. `at` centres circle/diamond/shape, `angle` orients wipe/push, `pts` is the shape for `shape`, `sfx` renames or (false) silences its whoosh, `name` labels the shot in `chromeHUD`. The first shot can transition in from a colour with `from`. Add your own shapes to `TRANSITIONS` |
+| `impacts: [t, [t, k], ...]` | a hit: zoom kick, shake and colour split that decay in about half a second (strength `k`, 1 by default), plus an impact sound. Take them from the song with `audioMap(id).hits` (see Music) |
+| `flashes: [[t, k, col]]`, `glitches: [[t0, t1, k]]` | full-frame light that decays; displaced bands and colour split (with a glitch sound) |
+| `post: 'reel'` or `{ preset, grain, vignette, beat, letterbox, fadeIn, fadeOut, fadeCol }` | the finish: animated grain, vignette, a small zoom kick on every beat, bars, fades. Presets in `POST_PRESETS` (`reel`, `film`, `clean`) |
+| `overlay: (c, t) => {}` | drawn on the 2D canvas over every shot and across the cuts: a HUD, a logo, a frame. `chromeHUD(c, t, { title, fade })` is a ready-made one (title, timecode, shot name, beat counter, progress) |
+| `sfx: [[t, name, { gain, pan, dur, note }]]`, `sfxAuto` | sound effects on top of the music (see Music, point 8) |
+| `fps` | the frame rate `render.mjs` uses for this scene when no `--fps` is given (24 by default; 50–60 for fast motion graphics) |
+
+- During a transition the compositor draws both shots, so those frames cost double, and the outgoing shot keeps being called past its end (`lt > dur`) until the transition finishes: make its last pose hold or keep moving.
+- The `--post=bloom|film|punch` flag of `render.mjs` is a separate colour pass applied by FFmpeg while encoding; it combines with all of this.
 
 ### Painting
 
@@ -614,11 +656,12 @@ The kit doesn't need music, but it's built for it:
 
 1. Register your scene with `bpm`, `duration`, `offset`, and `audio` using `registerScene('my_scene', { ... })`. Every idle, dance and `pulse()` then locks to the song.
 2. Put a one-off video's audio in `projects/` next to its scene (e.g. `projects/my_song.mp3`; `audio/` is for the tracks of the versioned scenes in `src/scenes/`) and reference it in the scene definition (`audio: 'projects/my_song.mp3'`) or pass `--audio=`. If the file is not found, prompt the user with the exact folder path to place it. Leave it there after export: the user deletes files in `audio/`, `out/` and `projects/` when they choose, so never offer or suggest removing them.
-3. Land hits, cuts and takes on beats (`beatN`, `pulse`). Cut on bar lines for big changes, and give each musical phrase its own visual.
+3. Land hits, cuts and takes on beats (`beatN`, `pulse`). `python tools/analyze_audio.py song.mp3 --js=projects/x.map.js --id=x` writes the song's beat grid, sections and strongest hits as a script; load it before the scene and use `audioMap('x').hits` as the scene's `impacts` and `.sections` for the big cuts. Cut on bar lines for big changes, and give each musical phrase its own visual.
 4. **Lyrics on screen.** In a fast-cut music video, one clean line (`subtitles()` in the display face) plus poster words on the hooks (`heroWord()`) reads best: physical words spread over the frame fight the tags and props of shots that change every second. Physical words suit slower sections, dialogue and shots built around the words. Sync them with `tools/sync_lyrics.py` and load the generated script with the scene (`studio.html?script=projects/x.lyrics.js,projects/x.js`, same for `render.mjs --script=`). Act the meaning of a line too, not just its words.
 5. **No audio, or only a voice?** `tools/make_bed.py` builds an instrumental bed around a moment (intro, build-up, drop at a chosen second, fade), a calm loop under a long narration (`--style=calm`) or a light cumbia for comedy and everyday scenes (`--style=cumbia`), can cut the music with a record scratch for a comedy beat (`--stop=a:b`), and, given a voice, mixes it on top and ducks the music while it talks. Its drum and synth voices live in `tools/synth.py`, to reuse in any other audio tool. Spoken voice (TTS, never singing) comes from `tools/narrate.py`; for a sung song, suggest Suno, Udio or ElevenLabs Music.
 6. **Explainers and voice-overs**: `tools/narrate.py` speaks a script written in blocks and writes the word timings, one line per block (with its id), so each shot starts on its block and details land on the words.
 7. **Audio-reactive visuals**: `tools/audio_envelope.py` writes a loudness envelope script; `envelopeAt(id, t)` returns 0..1, for waveforms, mouths that move while someone talks, things that pulse with a voice.
+8. **Sound effects**: transitions, impacts and glitches get a whoosh, an impact and a glitch burst automatically, and `sfx: [[t, name, opts]]` adds more, where `t` is the moment the sound lands (a whoosh peaks there, a riser ends there). `tools/sfx.py` synthesizes them (`--list` names them, `--audition` writes them all one after another): `whoosh`, `swish`, `impact`, `hit`, `sub`, `riser`, `revcrash`, `downer`, `tick`, `click`, `pop`, `blip` and `ding` (with `note`, a MIDI number), `zap`, `shimmer`, `glitch`, `typing`. Give each visual event its sound (a morph, a flip, a counter, a word landing): it is a large part of what makes motion graphics feel finished. Over dialogue or a sung voice keep them under the voice (`--sfx-gain=0.5` or so, checked on the loudest hits); the default level suits instrumentals.
 
 ## Explainers
 

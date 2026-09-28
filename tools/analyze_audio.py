@@ -2,8 +2,11 @@
 
 Usage:
     python tools/analyze_audio.py <audio file> [--bpm-min=80] [--bpm-max=180 | --bpm=<known tempo>] [--json=out/audio_map.json]
+        [--js=projects/x.map.js --id=x]
 
 Prints the tempo, the first-downbeat offset, the energy of every bar and the likely section boundaries.
+--js writes a script for the page (registerAudioMap) with the beat grid, the sections and the strongest hits on the
+beat grid, so a scene can take its cuts and impacts from the song: impacts: audioMap('x').hits.
 Needs ffmpeg on PATH and numpy.
 """
 import json
@@ -135,6 +138,30 @@ def main():
         mark = "  <-- section?" if i in peaks else ""
         meter = "#" * int(b["rms"] * 30)
         print(f"{i:3d}  {b['t']:7.2f}  {b['rms']:.2f}  {b['bass']:.2f}  {b['high']:.2f}  {b['onsets']:.2f}  {meter}{mark}")
+
+    # hits: the beats with the strongest onsets (top 8%, at least two beats apart) plus every section start
+    beat = 60 / bpm
+    beat_times = np.arange(offset % beat, duration, beat)
+    strength = np.array([env[max(0, int(bt * fps) - 2):int(bt * fps) + 3].max() if int(bt * fps) < len(env) else 0 for bt in beat_times])
+    top = np.percentile(strength, 92) if len(strength) else 0
+    hits = []
+    for bt, v in sorted(zip(beat_times, strength), key=lambda p: -p[1]):
+        if v >= top and all(abs(bt - h[0]) >= 2 * beat - 1e-6 for h in hits):
+            hits.append([round(float(bt), 3), round(float(v / (strength.max() or 1)), 2)])
+    for i in peaks:
+        st = bars[i]["t"]
+        hits = [h for h in hits if abs(h[0] - st) > beat / 2] + [[st, 1.0]]
+    hits.sort()
+    print(f"\nhits ({len(hits)}): " + " ".join(f"{h[0]:.2f}" for h in hits))
+
+    if "js" in opts:
+        mid = opts.get("id") or os.path.splitext(os.path.basename(path))[0]
+        os.makedirs(os.path.dirname(opts["js"]) or ".", exist_ok=True)
+        data = {"bpm": round(bpm, 3), "offset": round(offset, 3), "duration": round(duration, 3),
+                "sections": [bars[i]["t"] for i in peaks], "hits": hits}
+        with open(opts["js"], "w", encoding="utf-8") as f:
+            f.write(f"// written by tools/analyze_audio.py from {os.path.basename(path)}\nregisterAudioMap({json.dumps(mid)}, {json.dumps(data)});\n")
+        print(f"wrote {opts['js']}")
 
     if "json" in opts:
         os.makedirs(os.path.dirname(opts["json"]) or ".", exist_ok=True)

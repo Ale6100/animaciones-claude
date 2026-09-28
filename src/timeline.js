@@ -3,8 +3,11 @@
 // shots([[t0, fn], [t1, fn], ...]) registers shots in time order. Each fn(t, lt, dur) is called with t = video time,
 // lt = time since the shot started, dur = the shot's length. It paints the WHOLE frame, background included, and must be
 // a pure function of t: frames render in parallel and out of order, so nothing may carry over from one frame to the next.
+// An optional third entry holds the shot's options: its transition in, its name (see src/post.js).
 
 const SHOTS = [];
+// The shot the compositor asks drawWorld() for (a transition draws both shots of the seam), or null for the one at t.
+let SHOT_PICK = null;
 function shots(list) { SHOTS.push(...list); SHOTS.sort((a, b) => a[0] - b[0]); }
 
 // ---------- Multi-Scene Registry ----------
@@ -58,15 +61,29 @@ function envelopeAt(id, t) {
   return lerp(e.values[i], e.values[i + 1], f - i);
 }
 
+// A song's beat grid, sections and strongest hits (tools/analyze_audio.py --js writes a script that calls this):
+// { bpm, offset, duration, sections: [t...], hits: [[t, strength 0..1]...] }. Feeds impacts, cuts and flashes.
+const AUDIO_MAPS = window.AUDIO_MAPS = {};
+window.registerAudioMap = function(id, map) { AUDIO_MAPS[id] = map; };
+function audioMap(id) {
+  const m = AUDIO_MAPS[id];
+  if (!m) throw new Error(`audioMap: no map "${id}" (load its .map.js script before the scene)`);
+  return m;
+}
+
 // Standalone loops (model sheets, GIFs, tests), outside the main timeline: window.LOOP = LOOPS[name] swaps the whole
 // frame for that function, called with loop time. Give each a length: LOOPS.x = t => { ... }; LOOPS.x.len = 4;
 const LOOPS = {};
+
+function shotIndex(t) { let i = 0; while (i + 1 < SHOTS.length && t >= SHOTS[i + 1][0]) i++; return i; }
+// The options of the shot on screen at t (the optional third entry of a shot: transition, name...), or {}.
+const shotOpts = t => (SHOTS.length && SHOTS[shotIndex(t)][2]) || {};
 
 function drawWorld(t) {
   if (window.LOOP) window.LOOP(t);
   else if (!SHOTS.length) placeholder(t);
   else {
-    let i = 0; while (i + 1 < SHOTS.length && t >= SHOTS[i + 1][0]) i++;
+    const i = SHOT_PICK ?? shotIndex(t);
     const t0 = SHOTS[i][0], end = i + 1 < SHOTS.length ? SHOTS[i + 1][0] : DUR;
     SHOTS[i][1](t, t - t0, end - t0);
     CAM = null;

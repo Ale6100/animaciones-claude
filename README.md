@@ -17,8 +17,9 @@ Featuring an interactive browser studio with **real-time audio playback**, a **k
 2. **Physical Lyrics**:
    - Word-level timings from the song ([`tools/sync_lyrics.py`](tools/sync_lyrics.py)); each word lands on screen as it is sung and reacts to the characters (see *The Adaptive Music Video*).
    - Optional karaoke pill ([`src/lyrics.js`](src/lyrics.js)) that highlights each word in gold (`PAL.ochre`) as it is sung.
-3. **Interchangeable looks**: how shapes and lines render (motion graphics, flat vector cartoon, watercolor, risograph print, or a new one) is a layer of its own, chosen per scene, so the project isn't tied to one style. Every kind of video starts from motion graphics full of literal and ambient details, and moves away from it when its context calls for something else (`ANIMATION_GUIDE.md`, rule 1). The flat look also serves as a fast draft preview for iterating on motion (see `ANIMATION_GUIDE.md`, Looks).
-4. **Clean Generator Architecture**:
+3. **Interchangeable looks**: how shapes and lines render (motion graphics, flat vector cartoon, watercolor, risograph print, or a new one) is a layer of its own, chosen per scene, so the project isn't tied to one style. Every kind of video starts from motion graphics with the compositor's finish, full of literal and ambient details, and mixes in other looks and techniques wherever they help (a single pure style is the exception); the AI making the video decides the mix (`ANIMATION_GUIDE.md`, top and rule 1). The flat look also serves as a fast draft preview for iterating on motion (see `ANIMATION_GUIDE.md`, Looks).
+4. **Compositor and sound design**: shots declare their transition (slices, circle, blinds, tiles, wipe, a custom shape...), and a scene declares impacts, flashes and glitches on the hits of the music, a finish (grain, vignette, beat kick, fades) and a HUD that stays on across cuts ([`src/post.js`](src/post.js)). The same timeline produces the sound effects ([`tools/sfx.py`](tools/sfx.py): whooshes, impacts, risers, ticks...), mixed over the music when rendering, so every visual event can be heard.
+5. **Clean Generator Architecture**:
    - Each scene renders its frames into its own `out/frames/<scene>/` (resumable: an interrupted render continues where it stopped, and frames lost to GPU or memory pressure are retried or left for the next run of the same command). `.gitignore` is pre-configured so that generated video outputs (`out/`, `*.mp4`, rendered frames), custom audio tracks, and project-specific storyboards are never committed to your repository.
 
 ---
@@ -29,7 +30,7 @@ Featuring an interactive browser studio with **real-time audio playback**, a **k
 * [Node.js](https://nodejs.org) (v18+)
 * [Google Chrome](https://www.google.com/chrome/)
 * [FFmpeg](https://ffmpeg.org/)
-* *(Optional)* Python 3 with `numpy` (beat-grid analysis), `faster-whisper` (lyric sync), `scipy` (procedural song generation) and `edge-tts` (spoken narration)
+* *(Optional)* Python 3 with `numpy` (beat-grid analysis), `faster-whisper` (lyric sync), `scipy` (procedural song generation and sound effects) and `edge-tts` (spoken narration)
 
 ### 2. Install Dependencies
 ```bash
@@ -65,6 +66,10 @@ node render.mjs --clip --scene=claude_pop --draft --out=out/draft.mp4
 node render.mjs --frames --scene=claude_pop --blur=4 --workers=4
 node render.mjs --encode --scene=claude_pop --blur=4 --post=film --out=out/my_video.mp4
 
+# Sound effects (transitions, impacts, the scene's sfx list) are mixed into --clip and --encode automatically;
+# build only the mix, to hear it in the studio (--sfx=off leaves them out of a render):
+node render.mjs --sfx --scene=reel
+
 # Check that every scene renders without page errors (exits 1 on failure):
 npm run smoke
 ```
@@ -89,8 +94,8 @@ How it works:
 * **A world full of details**: every shot is packed with references to what is shown and sung at that moment (the culture the song comes from, its jargon and objects, visual puns on the lyrics), in every layer of the frame and never stealing the focal action. Each video starts from a reference bank per section (`ANIMATION_GUIDE.md`, rule 8); `cues()` in [`src/comedy.js`](src/comedy.js) makes the world answer a word when it is sung.
 * **Explainers**: a narration can take the place of the song (lessons, voice-overs): the script is spoken block by block, what is taught is written on screen as it is said, with subtitles, and the frame stays a living cartoon around it (`ANIMATION_GUIDE.md`, Explainers).
 * **Literal comedy**: over casual speech, whatever is said appears the instant it is said and gets exaggerated ([`src/comedy.js`](src/comedy.js): `wordAt`, `popIn`, `snapAt`, `growAt`, `freezeAt`).
-* **Motion graphics, mixable**: [`src/motion.js`](src/motion.js) and the `motion` look add animated graphic design (lines that draw themselves, shapes that morph, masked reveals, cascades, title-style type) that combines with everything else, such as hand-drawn characters inside a motion-graphics world ([`src/scenes/motiongfx.js`](src/scenes/motiongfx.js)).
-* **No fixed limits**: looks, styles, moods, techniques, 2D and 3D are ingredients that mix whenever the video gains from it; a requested style is what the person is after, not a cage, and the AI explains any change it makes. Characters are optional too: a video can have a lead, an ensemble or none (pure typography, shapes, places), decided per song. See the top of `ANIMATION_GUIDE.md`.
+* **Motion graphics, mixable**: [`src/motion.js`](src/motion.js) and the `motion` look add animated graphic design (lines that draw themselves, shapes that morph, masked reveals, cascades, display type, marquees, particle words, 3D point clouds, echoes, flipping grids) that combines with everything else, such as hand-drawn characters inside a motion-graphics world ([`src/scenes/motiongfx.js`](src/scenes/motiongfx.js)). [`src/scenes/reel.js`](src/scenes/reel.js) is a pure motion-graphics reel with the compositor and its sound effects. The finish is what makes the style read as professional (hits that shake the frame, systematic transitions, sound on every event, expo timing, strong type), so it lives in reusable pieces instead of being rebuilt in each video.
+* **No fixed limits**: looks, styles, moods, techniques, 2D and 3D are ingredients that mix by default (see Features, point 3); a requested style is what the person is after, not a cage, and the AI explains any change it makes. Characters are optional too: a video can have a lead, an ensemble or none (pure typography, shapes, places), decided per song. See the top of `ANIMATION_GUIDE.md`.
 * **The story is a surprise**: the AI improvises the story and doesn't pitch it; before building it only asks what it can't decide alone and that spoils nothing (music under a voice, length, overall energy), and builds after the answers.
 * **Invent, then keep what's reusable**: every video is free to invent characters, effects, transitions and moods, and new characters are welcome whenever the story benefits. Whatever another video could reuse is generalized into the shared code ([`src/characters.js`](src/characters.js), [`src/fx.js`](src/fx.js) and the engine files) and listed in the Library of `ANIMATION_GUIDE.md`; everything specific to one video stays in the git-ignored `projects/`.
 * **Example**: [`src/scenes/showcase.js`](src/scenes/showcase.js) sketches the paradigm in 24 s. It is one idea, not a template for how videos should look.
@@ -126,6 +131,7 @@ Creating a music video on **any topic** without cluttering the repository takes 
      ```bash
      python tools/analyze_audio.py projects/my_song.mp3            # tempo, first downbeat, energy per bar, likely sections
      python tools/analyze_audio.py projects/my_song.mp3 --bpm=168.5 # re-run with a known/refined tempo
+     python tools/analyze_audio.py projects/my_song.mp3 --js=projects/my_video.map.js --id=my_video   # grid, sections and hits for the scene (audioMap)
      ```
      The tempo estimate can land a fraction of a BPM off, which drifts by whole beats over a full song: refine it with `--bpm=` until the printed phase per 20 s window stays stable across the track.
    - Get word-level lyric timings (writes `projects/my_video.lyrics.js`). It uses Whisper `medium` by default, because `small` mishears names and jargon far more often; keep it as the default. `--prompt-file=lyrics.txt` with the known lyrics improves accuracy a lot, and when they're unknown, a short line with the song's topic and vocabulary (names, technical terms) still helps:
@@ -190,8 +196,9 @@ Creating a music video on **any topic** without cluttering the repository takes 
 | Path | Description |
 | :--- | :--- |
 | [`studio.html`](studio.html) | Interactive browser studio with multi-scene dropdown, live audio player, and WebGL canvas |
-| [`render.mjs`](render.mjs) | Puppeteer renderer: contact sheets, frame sequences, `--scene=<id>` selection, and FFmpeg muxing |
-| [`src/timeline.js`](src/timeline.js) | Multi-scene registry (`registerScene`, `loadScene`), shot dispatcher, and dynamic karaoke painter |
+| [`render.mjs`](render.mjs) | Puppeteer renderer: contact sheets, frame sequences, `--scene=<id>` selection, the sound-effects mix, and FFmpeg muxing |
+| [`src/timeline.js`](src/timeline.js) | Multi-scene registry (`registerScene`, `loadScene`), shot dispatcher, audio maps, and dynamic karaoke painter |
+| [`src/post.js`](src/post.js) | Compositor over the finished frame: declared transitions, impacts, flashes, glitches, grain, vignette, fades, the HUD overlay, and the sound events of the scene |
 | [`src/config.js`](src/config.js) | Default starter configuration (title, duration, BPM) |
 | [`src/lyrics.js`](src/lyrics.js) | Default starter karaoke subtitles array |
 | [`src/kinetic.js`](src/kinetic.js) | Physical lyrics and kinetic typography, continuous camera director, character-text interactions, and formulas and subtitles for explainers |
@@ -201,11 +208,11 @@ Creating a music video on **any topic** without cluttering the repository takes 
 | [`src/styles.js`](src/styles.js) | Mood presets and their per-section blending and beat-locked camera energy |
 | [`src/core.js`](src/core.js) | Rendering engine and its looks (motion graphics by default, watercolor, flat, print), p5.brush setup, camera, dynamic rhythm state, and paper shaders |
 | [`src/clawd.js`](src/clawd.js) | Clawd character rig: views, limbs, emotes, eyes, and procedural kinematics |
-| [`src/motion.js`](src/motion.js) | Motion-graphics kit: easing, cascades, draw-on lines, shape morphs, masks, kinetic type |
-| [`src/scenes/`](src/scenes/) | Built-in example scenes (`demo.js`, `claude_pop.js`, `showcase.js`, `literal.js`, `motiongfx.js`) |
+| [`src/motion.js`](src/motion.js) | Motion-graphics kit: easing, cascades, draw-on lines, shape morphs, masks, display type, particles, 3D point clouds, echoes, grids |
+| [`src/scenes/`](src/scenes/) | Built-in example scenes (`demo.js`, `claude_pop.js`, `showcase.js`, `literal.js`, `motiongfx.js`, `reel.js`) |
 | [`projects/`](projects/) | Git-ignored directory for custom user videos and song scenes |
 | [`audio/`](audio/) | Tracks of the versioned scenes (e.g. `claude_pop`), git-ignored; one-off videos keep their audio in `projects/` |
-| [`tools/`](tools/) | Helper utilities: [`analyze_audio.py`](tools/analyze_audio.py) measures a song's beat grid, energy per bar and sections (needs `ffmpeg` and `numpy`); [`sync_lyrics.py`](tools/sync_lyrics.py) transcribes word-level lyric timings (needs `faster-whisper`); [`fix_lyrics.py`](tools/fix_lyrics.py) puts corrected lyrics onto those timings; [`make_bed.py`](tools/make_bed.py) builds an instrumental bed (around a drop, or a calm loop) and mixes a voice over it, with the drum and synth voices of [`synth.py`](tools/synth.py); [`narrate.py`](tools/narrate.py) speaks a script with word timings (needs `edge-tts`); [`narrate_neural.py`](tools/narrate_neural.py) high-quality offline neural narration using local VoiceStudio models and Whisper alignment; [`voicestudio.py`](tools/voicestudio.py) manages the local VoiceStudio API lifecycle and speech synthesis with automatic CUDA detection and JIT VRAM cleanup; [`setup_voicestudio.ps1`](tools/setup_voicestudio.ps1) automated installer and dependency bootstrapper for VoiceStudio; [`audio_envelope.py`](tools/audio_envelope.py) writes a loudness envelope for audio-reactive visuals (`envelopeAt`); [`ref_sheet.py`](tools/ref_sheet.py) studies a reference video (contact sheets, strips of a moment, its cuts and shot lengths in beats) |
+| [`tools/`](tools/) | Helper utilities: [`analyze_audio.py`](tools/analyze_audio.py) measures a song's beat grid, energy per bar, sections and strongest hits, and with `--js` writes them for the page (`audioMap()`; needs `ffmpeg` and `numpy`); [`sfx.py`](tools/sfx.py) synthesizes sound effects and mixes them over a track (`render.mjs` calls it; needs `numpy` and `scipy`); [`sync_lyrics.py`](tools/sync_lyrics.py) transcribes word-level lyric timings (needs `faster-whisper`); [`fix_lyrics.py`](tools/fix_lyrics.py) puts corrected lyrics onto those timings; [`make_bed.py`](tools/make_bed.py) builds an instrumental bed (around a drop, or a calm loop) and mixes a voice over it, with the drum and synth voices of [`synth.py`](tools/synth.py); [`narrate.py`](tools/narrate.py) speaks a script with word timings (needs `edge-tts`); [`narrate_neural.py`](tools/narrate_neural.py) high-quality offline neural narration using local VoiceStudio models and Whisper alignment; [`voicestudio.py`](tools/voicestudio.py) manages the local VoiceStudio API lifecycle and speech synthesis with automatic CUDA detection and JIT VRAM cleanup; [`setup_voicestudio.ps1`](tools/setup_voicestudio.ps1) automated installer and dependency bootstrapper for VoiceStudio; [`audio_envelope.py`](tools/audio_envelope.py) writes a loudness envelope for audio-reactive visuals (`envelopeAt`); [`ref_sheet.py`](tools/ref_sheet.py) studies a reference video (contact sheets, strips of a moment, its cuts and shot lengths in beats) |
 | [`ANIMATION_GUIDE.md`](ANIMATION_GUIDE.md) | Style guide and complete API reference |
 
 ---

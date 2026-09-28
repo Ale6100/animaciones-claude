@@ -191,6 +191,10 @@ const LOOKS = window.LOOKS = {
   print: { brush: false, paper: true, grain: true, print: true, boil: false, line: { ink: 3.4, inkfine: 1.8, dry: 5 }, lineOp: { dry: 130 } },
 };
 let LOOK = LOOKS.motion;
+// Type faces by role: display (titles, big type) and label (small spaced captions, HUD). A look can set its own in
+// LOOKS[name].type and a scene in registerScene({ type: { display, label } }). Bahnschrift ships with Windows 10 and 11.
+const TYPE_FACES = { display: 'Bahnschrift, "Segoe UI", "Helvetica Neue", Arial, sans-serif', condensed: '"Bahnschrift Condensed", Bahnschrift, "Arial Narrow", sans-serif', label: 'Bahnschrift, "Segoe UI", Arial, sans-serif' };
+const typeFace = role => ((window.ACTIVE_SCENE && ACTIVE_SCENE.type) || {})[role] || (LOOK.type || {})[role] || TYPE_FACES[role] || TYPE_FACES.display;
 function setLook(name) {
   if (!LOOKS[name]) throw new Error(`setLook: unknown look "${name}" (one of: ${Object.keys(LOOKS).join(', ')})`);
   LOOK = { name, ...LOOKS[name] };
@@ -272,7 +276,14 @@ function celFill(pts, o = {}) {
 // ---------- lettering (drawn on the 2D compositor, under the paper grain) ----------
 // Use sparingly: see "No text" in ANIMATION_GUIDE.md. Clawd's emotes are painted and never need these.
 function letter(txt, x, y, size, color, o = {}) {
-  if (CAM && !o.screen) { [x, y] = toScreen(x, y); size *= CAM.zoom; o = { ...o, rot: (o.rot || 0) + CAM.rot }; if (o.font) o.font = o.font.replace(/(\d+(\.\d+)?)px/, (m, v) => (v * CAM.zoom) + 'px'); }
+  if (CAM && !o.screen) {
+    const z = CAM.zoom;
+    [x, y] = toScreen(x, y); size *= z; o = { ...o, rot: (o.rot || 0) + CAM.rot };
+    if (o.font) o.font = o.font.replace(/(\d+(\.\d+)?)px/, (m, v) => (v * z) + 'px');
+    if (o.spacing) o.spacing *= z;
+    // the clip box follows the camera's position and zoom (not its roll)
+    if (o.clip) { const [cx, cy, cw, ch] = o.clip; o.clip = [...toScreen(cx, cy), cw * z, ch * z]; }
+  }
   LETTERS.push({ txt, x, y, size, color, ...o });
 }
 // Comic sound effect: pops in at age 0, wobbles, fades by `life` seconds.
@@ -283,9 +294,14 @@ function sfx(txt, x, y, size, color, age, o = {}) {
 function drawLetters(c) {
   for (const L of LETTERS) {
     const k = L.pop != null ? backOut(L.pop) : 1; if (k <= .01) continue;
-    c.save(); c.translate(L.x, L.y); c.rotate(L.rot || 0); c.scale(k, k); c.globalAlpha = L.alpha ?? 1;
+    c.save();
+    // clip: [x, y, w, h] in screen pixels; only that box shows (letters rising from behind a line)
+    if (L.clip) { c.beginPath(); c.rect(...L.clip); c.clip(); }
+    c.translate(L.x, L.y); c.rotate(L.rot || 0); c.scale(k, k); c.globalAlpha = L.alpha ?? 1;
     c.font = L.font || `${L.size}px "Permanent Marker", "Comic Sans MS", cursive`;
-    c.textAlign = L.align || 'center'; c.textBaseline = 'middle';
+    c.letterSpacing = (L.spacing || 0) + 'px';
+    c.textAlign = L.align || 'center'; c.textBaseline = L.baseline || 'middle';
+    if (L.outline) { c.lineJoin = 'round'; c.lineWidth = L.outline; c.strokeStyle = L.color; c.strokeText(L.txt, 0, 0); c.restore(); continue; }
     if (L.stroke) { c.lineJoin = 'round'; c.lineWidth = L.size * .12; c.strokeStyle = L.stroke; c.strokeText(L.txt, 0, 0); }
     if (L.ink !== false) { c.fillStyle = L.shadow || PAL.ink; c.fillText(L.txt, L.size * (L.shadowK ?? .045), L.size * (L.shadowK ?? .045) * 1.2); }
     c.fillStyle = L.color; c.fillText(L.txt, 0, 0);
@@ -353,7 +369,7 @@ async function setup() {
   paperG = makePaper(); grainC = makeGrain(); halftoneC = makeHalftone(); glowTex = makeGlowTex(); letG = createGraphics(W, H); letG.pixelDensity(1);
   outC = document.getElementById('out'); outX = outC.getContext('2d');
   await document.fonts.load('100px "Permanent Marker"'); await document.fonts.load('100px "Anton"');
-  await Promise.all(['500 100px "Shantell Sans"', '800 100px "Shantell Sans"', '100px "Noto Sans Math"'].map(f => document.fonts.load(f, 'x∧⇒∑')));
+  await Promise.all(['400 100px Bahnschrift', '700 100px Bahnschrift', '500 100px "Shantell Sans"', '800 100px "Shantell Sans"', '100px "Noto Sans Math"'].map(f => document.fonts.load(f, 'x∧⇒∑')));
   window.ready = true;
   if (!location.search.includes('render')) devUI();
 }
@@ -407,18 +423,24 @@ function printPass(c) {
   c.globalCompositeOperation = 'source-over';
 }
 const lostContext = () => drawingContext && drawingContext.isContextLost && drawingContext.isContextLost();
-async function renderOne(t) {
-  T = t;
-  await redraw();
+// Draws one frame into the output canvas, without the finishing passes. shot: the index of the shot to draw (the
+// compositor draws two shots during a transition, see src/post.js); null picks the one on screen at t.
+async function drawFrame(t, shot = null) {
+  T = t; SHOT_PICK = shot;
+  try { await redraw(); } finally { SHOT_PICK = null; }
   if (lostContext()) throw new Error('WebGL context lost after redraw at t=' + t);
   composite(t);
 }
+// A finished frame: the shot (or the two shots of a transition) plus the finishing passes of src/post.js.
+const renderOne = t => composeFrame(t);
 // Motion blur: sub > 1 averages `sub` renders spread over the shutter (a fraction of the frame, .5 = a film camera's
 // 180 degree shutter), so fast moves smear like a real camera. Every subframe keeps the frame's boil drawing, so
 // still linework stays sharp. Costs `sub` times the render time.
 let BOIL_T = null, accC = null;
+let RENDER_FPS = 24;
 window.renderAt = async (t, type = 'image/png', q = .92, sub = 1, shutter = .5, fps = 24) => {
   if (lostContext()) throw new Error('WebGL context lost at t=' + t);
+  RENDER_FPS = fps;
   if (sub <= 1) { BOIL_T = null; await renderOne(t); return outC.toDataURL(type, q); }
   if (!accC) { accC = document.createElement('canvas'); accC.width = W; accC.height = H; }
   const ax = accC.getContext('2d');
@@ -436,7 +458,7 @@ window.renderSheet = async (times, cols = 3, w = 640, crop = null) => {
   const [cx, cy, cw, ch] = crop || [0, 0, W, H], h = Math.round(w * ch / cw), rows = Math.ceil(times.length / cols), sc = document.createElement('canvas');
   sc.width = cols * w; sc.height = rows * h; const c = sc.getContext('2d'), ms = [];
   for (let i = 0; i < times.length; i++) {
-    const t0 = performance.now(); T = times[i]; await redraw(); composite(times[i]); ms.push(Math.round(performance.now() - t0));
+    const t0 = performance.now(); await renderOne(times[i]); ms.push(Math.round(performance.now() - t0));
     const x = (i % cols) * w, y = Math.floor(i / cols) * h;
     c.drawImage(outC, cx, cy, cw, ch, x, y, w, h); c.fillStyle = 'rgba(0,0,0,.65)'; c.fillRect(x, y, 84, 24); c.fillStyle = '#fff'; c.font = '15px sans-serif'; c.fillText(times[i].toFixed(2) + 's', x + 6, y + 17);
   }
